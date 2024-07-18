@@ -1,0 +1,747 @@
+clasified stock 
+clasified stock with batch
+clasified stock with order
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- performance check
+
+SELECT TOP 20 SUBSTRING(qt.TEXT, (qs.statement_start_offset/2)+1,
+((CASE qs.statement_end_offset
+WHEN -1 THEN DATALENGTH(qt.TEXT)
+ELSE qs.statement_end_offset
+END - qs.statement_start_offset)/2)+1),
+qs.execution_count,
+qs.total_logical_reads, qs.last_logical_reads,
+qs.total_logical_writes, qs.last_logical_writes,
+qs.total_worker_time,
+qs.last_worker_time,
+qs.total_elapsed_time/1000000 total_elapsed_time_in_S,
+qs.last_elapsed_time/1000000 last_elapsed_time_in_S,
+qs.last_execution_time,
+qp.query_plan
+FROM sys.dm_exec_query_stats qs
+CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) qt
+CROSS APPLY sys.dm_exec_query_plan(qs.plan_handle) qp
+ORDER BY qs.total_logical_reads DESC -- logical reads
+-- ORDER BY qs.total_logical_writes DESC -- logical writes
+-- ORDER BY qs.total_worker_time DESC -- CPU time
+
+
+
+
+-- for optimization if we do LogDatetime indexed  it reduce the time consumption 
+
+
+
+-- Use a CTE to simplify and structure the query
+WITH OrderItemLogs AS (
+    SELECT A.LogDatetime, A.LogAction
+    FROM TRN_OrderItemLog A
+    INNER JOIN #tblUser U ON A.entryby = U.Client_Id
+    LEFT JOIN TRN_Order B ON B.Order_ID = A.Order_ID
+        AND B.EntryDate <> A.LogDatetime
+    WHERE (@FROMDATE IS NULL OR @TODATE IS NULL OR CONVERT(DATE, B.OrderDate, 103) BETWEEN CONVERT(DATE, @FROMDATE, 103) AND CONVERT(DATE, @TODATE, 103))
+)
+
+-- Insert distinct results into temporary table
+SELECT DISTINCT CONVERT(VARCHAR(10), LogDatetime, 103) AS LogDate, LogAction
+INTO #TBLORDERLOG
+FROM OrderItemLogs;
+
+
+
+
+SELECT DISTINCT CONVERT(VARCHAR(10), A.LogDatetime, 103) AS LogDate, A.LogAction
+INTO #TBLORDERLOG
+FROM TRN_OrderItemLog A
+INNER JOIN #tblUser U ON A.entryby = U.Client_Id
+LEFT JOIN TRN_Order B WITH (NOLOCK) ON B.Order_ID = A.Order_ID
+WHERE (@FROMDATE IS NULL OR @TODATE IS NULL OR CONVERT(DATE, B.OrderDate, 103) BETWEEN CONVERT(DATE, @FROMDATE, 103) AND CONVERT(DATE, @TODATE, 103))
+AND B.EntryDate <> A.LogDatetime
+
+
+
+indexing on 
+TRN_OrderItemLog.entryby, TRN_OrderItemLog.Order_ID, TRN_Order.Order_ID, TRN_Order.OrderDate, and TRN_Order.EntryDate required 
+
+mainly in where condition column   -- partition
+
+
+
+
+[dbo].[Rep_ClasifiedStock]
+
+
+isnull with 
+
+ex -  Select @IsAgGrid = ISNULL(@IsAgGrid,0)    
+
+ SET @IsAgGrid = NULLIF(@IsAgGrid, '');
+ 
+ 
+ 
+ 
+ 
+
+
+
+
+
+
+
+nocount on 
+
+select * from  dbo.table 
+
+if exists(select 1 from table) 
+
+during joins big table at left side and small on right side
+
+
+
+
+
+1 . 
+
+ SET STATISTICS TIME ON;
+	select count(*) from TRN_OrderItemLog
+	 SET STATISTICS TIME off;
+
+	  SET STATISTICS TIME ON;
+	select count(*) from dbo.TRN_OrderItemLog
+	 SET STATISTICS TIME off;
+
+
+(1 row affected)
+
+ SQL Server Execution Times:
+   CPU time = 8986 ms,  elapsed time = 21864 ms.
+   
+   
+
+(1 row affected)
+
+ SQL Server Execution Times:
+   CPU time = 7860 ms,  elapsed time = 19443 ms.
+
+Completion time: 2024-07-16T14:17:53.2163144+05:30
+
+
+
+
+
+2 . 
+
+SET STATISTICS TIME ON;
+ select coalesce(UpdateIP,'') from #test1
+SET STATISTICS TIME off;
+
+SET STATISTICS TIME ON;
+select ISNULL(UpdateIP,'') from #test2
+SET STATISTICS TIME off;
+
+
+SET STATISTICS TIME ON;
+select NULLIF(UpdateIP,'') from #test4
+SET STATISTICS TIME off;
+
+
+
+
+(2094 rows affected)
+
+ SQL Server Execution Times:
+   CPU time = 0 ms,  elapsed time = 1 ms.
+
+Completion time: 2024-07-16T14:27:56.7928911+05:29
+
+
+(2094 rows affected)
+
+ SQL Server Execution Times:
+   CPU time = 15 ms,  elapsed time = 1 ms.
+
+Completion time: 2024-07-16T14:27:56.7928911+05:30
+
+
+
+(2094 rows affected)
+
+ SQL Server Execution Times:
+   CPU time = 0 ms,  elapsed time = 1 ms.
+
+Completion time: 2024-07-16T14:27:56.7928911+05:31
+
+
+
+
+
+
+
+
+3 .
+
+rather than  create temp table , table variable if our (size is small or medium) but we can not use it other codes below like temp 
+
+
+
+
+
+
+
+
+ declare @test2 table
+ (
+ id int 
+ );
+ DECLARE @Counter INT = 1;
+
+-- Loop to insert 1000 rows
+SET NOCOUNT ON;
+WHILE @Counter <= 40000
+BEGIN
+    INSERT INTO @test2 
+    VALUES 
+        (@Counter)
+    
+    SET @Counter = @Counter + 1;
+END;
+
+SET STATISTICS TIME ON;
+ select * from @test2
+SET STATISTICS TIME off;
+
+
+
+
+
+
+
+
+
+
+
+
+ create table #test
+ (
+
+ id int 
+ )
+
+
+ drop table #test
+ CREATE TABLE #test (
+    id INT PRIMARY KEY,
+);
+
+-- Declare variables
+DECLARE @Counter INT = 1;
+
+-- Loop to insert 1000 rows
+SET NOCOUNT ON;
+WHILE @Counter <= 40000
+BEGIN
+    INSERT INTO #test 
+    VALUES 
+        (@Counter)
+    
+    SET @Counter = @Counter + 1;
+END;
+
+select count(*) from #test
+
+
+
+
+SET STATISTICS TIME ON;
+select * from #test
+SET STATISTICS TIME off;
+
+
+temp table takes 16s more for execution and for table variable its o(1) time complexity linear for 40 k row with single column 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+4.
+main
+
+
+
+[dbo].[Rep_ClasifiedStock] sp 
+
+
+from @IsAgGrid during create temp table #tblColumns
+
+select more columns and requered less into create temp table query so
+rater than fetch unneccesary columns 
+so fetching them into cte and use it sub sequently other required places and avoid repetation of query  so it read data from cte (cache memory)
+
+---------
+The ColumnMetadata CTE fetches the required columns from sys.columns 
+once and uses them in subsequent operations. This improves readability and avoids repetitive querying.
+----------------
+
+The INSERT statement explicitly lists columns, ensuring that only necessary columns are inserted. 
+This is important for maintaining code correctness and preventing errors.
+
+
+
+It ensures that only the necessary columns are populated with data during the insert operation. If the table schema of #tblColumns changes in the future 
+(e.g., columns are added or removed), explicitly listing columns prevents unintended errors that could arise from assuming a different column order or missing columns
+---------------------------------
+
+Instead of using OBJECT_ID() directly in the WHERE clause, we fetch it once in the CTE (ColumnMetadata). 
+This approach can potentially optimize query performance.
+
+
+---------------
+
+
+
+
+
+
+
+-- Create a temporary table #tblColumns
+CREATE TABLE #tblColumns (
+    headerName VARCHAR(500),
+    children VARCHAR(500),
+    field VARCHAR(500),
+    headerCheckboxSelection BIT,
+    headerCheckboxSelectionFilteredOnly BIT,
+    checkboxSelection BIT,
+    valueFormatter VARCHAR(500),
+    cellRenderer VARCHAR(500),
+    rowGroup BIT,
+    width VARCHAR(500),
+    minWidth VARCHAR(500),
+    maxWidth VARCHAR(500),
+    hide BIT,
+    suppressSizeToFit VARCHAR(500),
+    suppressFiltersToolPanel VARCHAR(500),
+    suppressColumnsToolPanel VARCHAR(500),
+    sortable BIT,
+    cellClass VARCHAR(500),
+    editable BIT,
+    cellEditor VARCHAR(500),
+    autoHeight BIT,
+    autoWidth BIT DEFAULT 1,
+    enableRowGroup BIT
+);
+
+-- Fetch column metadata into a CTE
+WITH ColumnMetadata AS (
+    SELECT
+        CASE
+            WHEN c.name LIKE '%LOADING%' THEN REPLACE(c.name, 'LOADING', '')
+            ELSE REPLACE(c.name, 'Name', '')
+        END AS headerName,
+        c.name AS children,
+        c.name AS field,
+        200 AS width,
+        CAST(0 AS BIT) AS headerCheckboxSelection,
+        CAST(0 AS BIT) AS headerCheckboxSelectionFilteredOnly,
+        CAST(0 AS BIT) AS checkboxSelection,
+        CASE
+            WHEN c.name LIKE '%LoadingQty%' THEN CAST(1 AS BIT)
+            ELSE CAST(0 AS BIT)
+        END AS hide
+    FROM tempdb.sys.columns c
+    WHERE c.object_id = OBJECT_ID('tempdb..#tblReport')
+)
+
+-- Insert data into #tblColumns from the CTE
+INSERT INTO #tblColumns (
+    headerName,
+    children,
+    field,
+    width,
+    headerCheckboxSelection,
+    headerCheckboxSelectionFilteredOnly,
+    checkboxSelection,
+    hide
+)
+SELECT
+    headerName,
+    children,
+    field,
+    width,
+    headerCheckboxSelection,
+    headerCheckboxSelectionFilteredOnly,
+    checkboxSelection,
+    hide
+FROM ColumnMetadata;
+
+-- Select data from #tblColumns (for verification or further processing)
+SELECT * FROM #tblColumns;
+
+-- Drop the temporary table #tblColumns
+DROP TABLE #tblColumns;
+
+
+
+
+
+
+
+
+-------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+SQL Server parse and compile time: 
+   CPU time = 0 ms, elapsed time = 0 ms.
+
+ SQL Server Execution Times:
+   CPU time = 0 ms,  elapsed time = 0 ms.
+
+ SQL Server Execution Times:
+   CPU time = 0 ms,  elapsed time = 0 ms.
+
+ SQL Server Execution Times:
+   CPU time = 5707 ms,  elapsed time = 6717 ms.
+
+ SQL Server Execution Times:
+   CPU time = 687 ms,  elapsed time = 3751 ms.
+Warning: Null value is eliminated by an aggregate or other SET operation.
+
+ SQL Server Execution Times:
+   CPU time = 0 ms,  elapsed time = 0 ms.
+
+ SQL Server Execution Times:
+   CPU time = 0 ms,  elapsed time = 0 ms.
+Warning: Null value is eliminated by an aggregate or other SET operation.
+
+ SQL Server Execution Times:
+   CPU time = 78 ms,  elapsed time = 416 ms.
+
+ SQL Server Execution Times:
+   CPU time = 16 ms,  elapsed time = 1 ms.
+
+ SQL Server Execution Times:
+   CPU time = 6488 ms,  elapsed time = 10903 ms.
+
+Completion time: 2024-07-16T15:59:15.2271327+05:30
+
+
+
+
+
+
+
+
+
+work - 
+
+nullif 8s
+isnull 9s
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+..........................................
+
+
+
+
+
+SELECT TOP 20 SUBSTRING(qt.TEXT, (qs.statement_start_offset/2)+1,
+((CASE qs.statement_end_offset
+WHEN -1 THEN DATALENGTH(qt.TEXT)
+ELSE qs.statement_end_offset
+END - qs.statement_start_offset)/2)+1),
+qs.execution_count,
+qs.total_logical_reads, qs.last_logical_reads,
+qs.total_logical_writes, qs.last_logical_writes,
+qs.total_worker_time,
+qs.last_worker_time,
+qs.total_elapsed_time/1000000 total_elapsed_time_in_S,
+qs.last_elapsed_time/1000000 last_elapsed_time_in_S,
+qs.last_execution_time,
+qp.query_plan
+FROM sys.dm_exec_query_stats qs
+CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) qt
+CROSS APPLY sys.dm_exec_query_plan(qs.plan_handle) qp
+ORDER BY qs.total_logical_reads DESC -- logical reads
+-- ORDER BY qs.total_logical_writes DESC -- logical writes
+-- ORDER BY qs.total_worker_time DESC -- CPU time
+
+
+  
+  
+  work [Rep_ClasifiedStock_Bk_B_160724] - 6.5 s upto optimized add index to temp table 
+  
+  [dbo].[Rep_ClasifiedStockAfterOrder_Bk_B_170724]  add index and code change little bit
+  
+  
+  
+  
+  
+  
+  
+  
+set statistics time on;
+
+Select Ord.Order_ID,MAX(Reserve.EntryDate) LastReservation ,min(Reserve.EntryDate) FirstReservation    
+Into #ReserveDate  from TRN_Order ORD WITH(NOLOCK)  Left Join TRN_OrderReserve Reserve WITH(NOLOCK) ON  
+Reserve.Order_ID = Ord.Order_ID  Group by Ord.Order_ID
+
+set statistics time off
+
+drop table #ReserveDate
+
+
+
+set statistics time on;
+
+WITH OrderReservations AS (
+    SELECT 
+        Order_ID,
+        MAX(EntryDate) AS LastReservation,
+        MIN(EntryDate) AS FirstReservation
+    FROM 
+        TRN_OrderReserve WITH(NOLOCK)
+    GROUP BY 
+        Order_ID
+)
+SELECT 
+    Ord.Order_ID,
+    ORes.LastReservation,
+    ORes.FirstReservation
+INTO #ReserveDate
+FROM 
+    TRN_Order Ord WITH(NOLOCK)
+LEFT JOIN 
+    OrderReservations ORes ON ORes.Order_ID = Ord.Order_ID;
+
+
+set statistics time off;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- notes ---------
+
+OPTION (RECOMPILE);
+
+----------------
+
+
+SET STATISTICS TIME ON;
+exec [dbo].[Rep_ItemClasifiedStockWithBatch_BK_B_170724]
+SET STATISTICS TIME Off;
+
+
+ /*
+	SQL Server Execution Times:
+	CPU time = 19083 ms,  elapsed time = 48388 ms.
+   row affected 48225
+   execution time 54 S
+   */
+   
+SET STATISTICS time ON;
+exec  [dbo].[Rep_ItemClasifiedStockWithBatch_BK_DS_08072024]
+SET STATISTICS TIME Off;
+
+
+
+  /*
+   SQL Server Execution Times:
+   CPU time = 38640 ms,  elapsed time = 137613 ms.
+   row affected 48225
+   execution time 1.51 S 
+   */
+
+
+
+new sp after the optimization
+
+
+
+executation plan for this
+
+
+table insert #viewstock (29 %)
+sorting (7%)
+repartition (5%)
+joins (3%) each
+
+
+
+
+
+
+
+
+
+SET STATISTICS TIME ON;
+exec [dbo].[Rep_ItemClasifiedStockWithBatch_BK_B_170724]
+SET STATISTICS TIME Off;
+
+
+ /*
+	SQL Server Execution Times:
+	CPU time = 19083 ms,  elapsed time = 48388 ms.
+   row affected 48225
+   execution time 54 S
+   */
+   
+SET STATISTICS time ON;
+exec  [dbo].[Rep_ItemClasifiedStockWithBatch_BK_DS_08072024]
+SET STATISTICS TIME Off;
+
+
+
+  /*
+   SQL Server Execution Times:
+   CPU time = 38640 ms,  elapsed time = 137613 ms.
+   row affected 48225
+   execution time 1.51 S 
+   */
+
+
+
+
+
+
+
+....................................  18-7-24
+
+
+Clasifid 
+With Bach
+AfterOrder
+AfterOrderWithbach
+
+
+
+
+
+
+
+set statistics time on
+
+exec [dbo].[Rep_ClasifiedStockAfterOrder_Bk_O_070624]
+
+set statistics time off
+
+
+
+/*
+ SQL Server Execution Times:
+   CPU time = 6406 ms,  elapsed time = 9202 ms.
+
+*/
+
+ set statistics time on
+
+ exec [dbo].[Rep_ClasifiedStockAfterOrder_Bk_B_180724]
+
+ set statistics time off
+
+
+
+ /*
+  SQL Server Execution Times:
+     SQL Server Execution Times:
+   CPU time = 5466 ms,  elapsed time = 3785 ms.
+
+	execution time reduce from 9 to 5 s
+
+   */
