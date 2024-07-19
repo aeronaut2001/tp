@@ -9,7 +9,7 @@ clasified stock with order
 
 
 
-dgdgdgf
+
 
 
 
@@ -745,3 +745,539 @@ set statistics time off
 	execution time reduce from 9 to 5 s
 
    */
+   
+   
+   
+   
+   
+   
+   task 
+   
+   ..................
+   
+   
+create proc dynamic_inputs
+@display_id int
+as
+begin
+
+declare @table_name nvarchar(250);
+declare @table_column nvarchar(max);
+declare @filter_condition nvarchar(max);
+declare @Database_name nvarchar(250);
+declare @dynamic_sql nvarchar(max);
+
+
+select  @table_name = Table_Name,@table_column = Select_Cols , @filter_condition = Filter_Cols , @Database_name = DB_names   from test_bhushan.dbo.masters_bhushan where display_id = @display_id
+
+
+set @dynamic_sql = 'select ' + @table_column + ' from ' + @Database_name + '.dbo.' + @table_name 
+
+if @filter_condition is not null and @filter_condition <> ''
+begin
+
+set @dynamic_sql = @dynamic_sql + ' Where ' + @filter_condition
+
+print @dynamic_sql
+
+exec sp_executesql @dynamic_sql
+
+end
+
+
+end
+
+
+
+dynamic_inputs 106
+
+
+
+
+--- 
+
+
+dynamic sql code for practice
+
+
+
+DECLARE @sqlCommand NVARCHAR(MAX);
+DECLARE @parameterDefinition NVARCHAR(MAX);
+DECLARE @City NVARCHAR(50) = 'New York';
+DECLARE @Country NVARCHAR(50) = 'USA';
+
+SET @sqlCommand = 'SELECT * FROM Customers WHERE City = @City AND Country = @Country';
+SET @parameterDefinition = '@City NVARCHAR(50), @Country NVARCHAR(50)';
+
+EXEC sp_executesql @sqlCommand, @parameterDefinition, @City, @Country;
+
+
+
+
+---
+
+
+
+
+
+CREATE OR ALTER PROCEDURE usp_GetEmployeeDetails
+    @TableName NVARCHAR(100),
+    @ColumnName NVARCHAR(100),
+    @SearchKeyword NVARCHAR(100)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @SQL NVARCHAR(MAX);
+
+    -- Build the dynamic SQL statement with a WHERE clause
+    SET @SQL = N'SELECT ' + QUOTENAME(@ColumnName) + N' FROM ' + QUOTENAME(@TableName) +
+               N' WHERE ' + QUOTENAME(@ColumnName) + N' LIKE @SearchKeyword';
+
+    -- Concatenate the search keyword with wildcards inside the parameter
+    SET @SearchKeyword = '%' + @SearchKeyword + '%';
+
+    -- Execute the dynamic SQL statement
+    EXEC sp_executesql @SQL, N'@SearchKeyword NVARCHAR(100)', @SearchKeyword = @SearchKeyword;
+END;
+GO
+
+
+
+----------
+
+-- Create a stored procedure for dynamic table creation
+CREATE OR ALTER PROCEDURE usp_CreateDynamicTable
+    @TableName NVARCHAR(100),
+    @ColumnsDefinition NVARCHAR(MAX)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @SQL NVARCHAR(MAX);
+
+    -- Build the dynamic SQL statement to create table
+    SET @SQL = N'CREATE TABLE ' + QUOTENAME(@TableName) + N' (' + @ColumnsDefinition + N')';
+
+    -- Execute the dynamic SQL statement
+    EXEC sp_executesql @SQL;
+END;
+GO
+
+
+-----------------
+
+-- Create a stored procedure for dynamic insert
+CREATE OR ALTER PROCEDURE usp_DynamicInsert
+    @TableName NVARCHAR(100),
+    @Columns NVARCHAR(MAX),
+    @Values NVARCHAR(MAX)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @SQL NVARCHAR(MAX);
+
+    -- Build the dynamic SQL statement for insert
+    SET @SQL = N'INSERT INTO ' + QUOTENAME(@TableName) + N' (' + @Columns + N') ' +
+               N'VALUES (' + @Values + N')';
+
+    -- Execute the dynamic SQL statement
+    EXEC sp_executesql @SQL;
+END;
+GO
+
+
+
+EXEC usp_DynamicInsert 'Employees', '[EmployeeID], [FirstName], [LastName]', '101, ''John'', ''Doe''';
+
+
+
+-----------------
+
+
+
+
+-- Create a stored procedure for dynamic column selection
+CREATE OR ALTER PROCEDURE usp_DynamicColumnSelect
+    @TableName NVARCHAR(100),
+    @Columns NVARCHAR(MAX)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @SQL NVARCHAR(MAX);
+
+    -- Build the dynamic SQL statement for select
+    SET @SQL = N'SELECT ' + @Columns + N' FROM ' + QUOTENAME(@TableName);
+
+    -- Execute the dynamic SQL statement
+    EXEC sp_executesql @SQL;
+END;
+GO
+
+
+
+
+
+EXEC usp_DynamicColumnSelect 'Employees', '[EmployeeID], [FirstName], [LastName]';
+
+
+
+
+
+--------- 
+
+
+-- Create a stored procedure for dynamic update
+CREATE OR ALTER PROCEDURE usp_DynamicUpdate
+    @TableName NVARCHAR(100),
+    @SetClause NVARCHAR(MAX),
+    @Condition NVARCHAR(MAX)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @SQL NVARCHAR(MAX);
+
+    -- Build the dynamic SQL statement for update
+    SET @SQL = N'UPDATE ' + QUOTENAME(@TableName) +
+               N' SET ' + @SetClause +
+               N' WHERE ' + @Condition;
+
+    -- Execute the dynamic SQL statement
+    EXEC sp_executesql @SQL;
+END;
+GO
+
+
+
+
+EXEC usp_DynamicUpdate 'Employees', 'Salary = 50000, Department = ''IT''', 'EmployeeID = 101';
+
+
+---------
+
+-- Create a stored procedure for dynamic delete with join
+CREATE OR ALTER PROCEDURE usp_DynamicDeleteWithJoin
+    @PrimaryTableName NVARCHAR(100),
+    @JoinTableName NVARCHAR(100),
+    @Condition NVARCHAR(MAX)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @SQL NVARCHAR(MAX);
+
+    -- Build the dynamic SQL statement for delete with join
+    SET @SQL = N'DELETE ' + QUOTENAME(@PrimaryTableName) +
+               N' FROM ' + QUOTENAME(@PrimaryTableName) + N' AS PT ' +
+               N' INNER JOIN ' + QUOTENAME(@JoinTableName) + N' AS JT ON ' + @Condition;
+
+    -- Execute the dynamic SQL statement
+    EXEC sp_executesql @SQL;
+END;
+GO
+
+
+
+
+
+EXEC usp_DynamicDeleteWithJoin 'Employees', 'Departments', 'PT.DepartmentID = JT.DepartmentID AND JT.DepartmentName = ''HR''';
+
+
+
+
+
+-------
+
+
+-- Create a stored procedure for dynamic backup and restore
+CREATE OR ALTER PROCEDURE usp_DynamicBackupRestore
+    @Operation NVARCHAR(50),
+    @TableName NVARCHAR(100),
+    @BackupFilePath NVARCHAR(200)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @SQL NVARCHAR(MAX);
+
+    -- Build the dynamic SQL statement based on operation
+    IF @Operation = 'BACKUP'
+    BEGIN
+        SET @SQL = N'BACKUP DATABASE ' + QUOTENAME(DB_NAME()) +
+                   N' TO DISK = ' + QUOTENAME(@BackupFilePath);
+    END
+    ELSE IF @Operation = 'RESTORE'
+    BEGIN
+        SET @SQL = N'RESTORE DATABASE ' + QUOTENAME(DB_NAME()) +
+                   N' FROM DISK = ' + QUOTENAME(@BackupFilePath) +
+                   N' WITH REPLACE';
+    END
+    ELSE
+    BEGIN
+        RAISEERROR('Invalid operation specified.', 16, 1);
+        RETURN;
+    END
+
+    -- Execute the dynamic SQL statement
+    EXEC sp_executesql @SQL;
+END;
+GO
+
+
+
+EXEC usp_DynamicBackupRestore 'BACKUP', 'YourDatabaseName', 'C:\Backup\YourDatabase.bak';
+EXEC usp_DynamicBackupRestore 'RESTORE', 'YourDatabaseName', 'C:\Backup\YourDatabase.bak';
+
+
+
+-----------
+
+
+
+
+-- Create a stored procedure for dynamic schema manipulation
+CREATE OR ALTER PROCEDURE usp_DynamicSchemaManipulation
+    @TableName NVARCHAR(100),
+    @ColumnName NVARCHAR(100),
+    @DataType NVARCHAR(50)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @SQL NVARCHAR(MAX);
+
+    -- Build the dynamic SQL statement to add a column
+    SET @SQL = N'ALTER TABLE ' + QUOTENAME(@TableName) +
+               N' ADD ' + QUOTENAME(@ColumnName) + N' ' + @DataType;
+
+    -- Execute the dynamic SQL statement
+    EXEC sp_executesql @SQL;
+END;
+GO
+
+
+
+EXEC usp_DynamicSchemaManipulation 'Employees', 'DateOfBirth', 'DATE';
+
+
+
+-----------
+
+
+
+
+-- Create a stored procedure for dynamic transaction handling
+CREATE OR ALTER PROCEDURE usp_DynamicTransactionHandling
+    @OperationType NVARCHAR(50),
+    @TableName NVARCHAR(100),
+    @Values NVARCHAR(MAX)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @SQL NVARCHAR(MAX);
+
+    BEGIN TRY
+        -- Start the transaction
+        BEGIN TRANSACTION;
+
+        -- Build the dynamic SQL statement based on operation type
+        IF @OperationType = 'INSERT'
+        BEGIN
+            SET @SQL = N'INSERT INTO ' + QUOTENAME(@TableName) + N' VALUES (' + @Values + N')';
+        END
+        ELSE IF @OperationType = 'DELETE'
+        BEGIN
+            SET @SQL = N'DELETE FROM ' + QUOTENAME(@TableName) + N' WHERE ' + @Values;
+        END
+        ELSE
+        BEGIN
+            RAISEERROR('Invalid operation type specified.', 16, 1);
+            RETURN;
+        END
+
+        -- Execute the dynamic SQL statement
+        EXEC sp_executesql @SQL;
+
+        -- Commit the transaction
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        -- Rollback the transaction on error
+        IF @@TRANCOUNT > 0
+            ROLLBACK TRANSACTION;
+
+        -- Throw or handle the error as needed
+        THROW;
+    END CATCH
+END;
+GO
+
+
+
+
+
+
+EXEC usp_DynamicTransactionHandling 'INSERT', 'Employees', '101, ''John'', ''Doe''';
+EXEC usp_DynamicTransactionHandling 'DELETE', 'Employees', 'EmployeeID = 101';
+
+
+
+-------
+
+
+
+
+
+
+-- Create a stored procedure for dynamic index creation and maintenance
+CREATE OR ALTER PROCEDURE usp_DynamicIndexCreation
+    @TableName NVARCHAR(100),
+    @IndexName NVARCHAR(100),
+    @Columns NVARCHAR(MAX),
+    @IncludeColumns NVARCHAR(MAX) = NULL,
+    @WhereClause NVARCHAR(MAX) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @SQL NVARCHAR(MAX);
+
+    -- Build the dynamic SQL statement for index creation
+    SET @SQL = N'CREATE INDEX ' + QUOTENAME(@IndexName) +
+               N' ON ' + QUOTENAME(@TableName) + N' (' + @Columns + N')';
+
+    -- Optionally include included columns
+    IF @IncludeColumns IS NOT NULL
+    BEGIN
+        SET @SQL = @SQL + N' INCLUDE (' + @IncludeColumns + N')'
+
+
+    -- Optionally include WHERE clause for filtered index
+    IF @WhereClause IS NOT NULL
+    BEGIN
+        SET @SQL = @SQL + N' WHERE ' + @WhereClause;
+    END
+
+    -- Execute the dynamic SQL statement
+    EXEC sp_executesql @SQL;
+END;
+GO
+
+
+
+
+EXEC usp_DynamicIndexCreation 'Employees', 'IX_Employees_DepartmentID', 'DepartmentID';
+EXEC usp_DynamicIndexCreation 'SalesData', 'IX_SalesData_ProductID', 'ProductID', 'OrderDate > ''2023-01-01''';
+
+
+
+
+--------------
+
+
+
+-- Create a stored procedure for dynamic XML generation from table data
+CREATE OR ALTER PROCEDURE usp_DynamicXmlGeneration
+    @TableName NVARCHAR(100),
+    @ColumnName NVARCHAR(100),
+    @Condition NVARCHAR(MAX)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @SQL NVARCHAR(MAX);
+
+    -- Build the dynamic SQL statement for XML generation
+    SET @SQL = N'SELECT ' +
+               N' (SELECT ' + @ColumnName + N' AS Name, ' +
+               N'        (SELECT * FROM ' + @TableName + N' WHERE ' + @Condition + N' FOR XML PATH(''Row''), TYPE) AS Data ' +
+               N' FOR XML PATH(''Table'')';
+
+    -- Execute the dynamic SQL statement
+    EXEC sp_executesql @SQL;
+END;
+GO
+
+
+
+
+EXEC usp_DynamicXmlGeneration 'Employees', 'EmployeeID, FirstName, LastName', 'Salary > 50000';
+
+
+
+--------------
+
+
+-- Create a stored procedure for dynamic bulk insert from CSV file
+CREATE OR ALTER PROCEDURE usp_DynamicBulkInsertFromCSV
+    @TableName NVARCHAR(100),
+    @CSVFilePath NVARCHAR(200)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @SQL NVARCHAR(MAX);
+
+    -- Build the dynamic SQL statement for bulk insert
+    SET @SQL = N'BULK INSERT ' + QUOTENAME(@TableName) +
+               N' FROM ' + QUOTENAME(@CSVFilePath) +
+               N' WITH (FIELDTERMINATOR = '','', ROWTERMINATOR = ''\n'', FIRSTROW = 2)'; -- Assuming first row is header
+
+    -- Execute the dynamic SQL statement
+    EXEC sp_executesql @SQL;
+END;
+GO
+
+
+
+EXEC usp_DynamicBulkInsertFromCSV 'Employees', 'C:\Data\employees.csv';
+
+
+
+
+
+
+-----------------
+
+
+
+
+-- Create a stored procedure for dynamic cross-database queries
+CREATE OR ALTER PROCEDURE usp_DynamicCrossDatabaseQuery
+    @DatabaseName NVARCHAR(100),
+    @SchemaName NVARCHAR(100),
+    @TableName NVARCHAR(100)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @SQL NVARCHAR(MAX);
+
+    -- Build the dynamic SQL statement for cross-database query
+    SET @SQL = N'SELECT * FROM ' + QUOTENAME(@DatabaseName) + N'.' + QUOTENAME(@SchemaName) + N'.' + QUOTENAME(@TableName);
+
+    -- Execute the dynamic SQL statement
+    EXEC sp_executesql @SQL;
+END;
+GO
+
+
+
+EXEC usp_DynamicCrossDatabaseQuery 'OtherDatabase', 'dbo', 'OtherTable';
+
+
+
+
+
+---------------------
+
+
+
+
+
+
+
