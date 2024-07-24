@@ -1,0 +1,97 @@
+CREATE or alter PROCEDURE sp_SolveFormulas
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @cols NVARCHAR(MAX),
+            @query NVARCHAR(MAX),
+            @straightQuery NVARCHAR(MAX),
+            @localQuery NVARCHAR(MAX),
+            @finalQuery NVARCHAR(MAX);
+
+    -- Drop global temporary tables if they already exist
+    IF OBJECT_ID('tempdb..##raw_pivot') IS NOT NULL DROP TABLE ##raw_pivot;
+    IF OBJECT_ID('tempdb..##straight_results') IS NOT NULL DROP TABLE ##straight_results;
+    IF OBJECT_ID('tempdb..##straight_pivot') IS NOT NULL DROP TABLE ##straight_pivot;
+    IF OBJECT_ID('tempdb..##combined_results') IS NOT NULL DROP TABLE ##combined_results;
+
+    -- Drop output_table if it exists
+    IF OBJECT_ID('dbo.output_table') IS NOT NULL DROP TABLE dbo.output_table;
+
+    -- Step 1: Pivot the raw_data table
+    SELECT @cols = STUFF((SELECT DISTINCT ',' + QUOTENAME(variables) 
+                          FROM raw_data 
+                          FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 1, '');
+
+    SET @query = 'SELECT ' + @cols + ' INTO ##raw_pivot FROM 
+                 (SELECT variables, CAST(variables_values AS FLOAT) AS variables_values FROM raw_data) AS SourceTable
+                 PIVOT 
+                 (MAX(variables_values) FOR variables IN (' + @cols + ')) AS PivotTable;';
+
+    EXEC sp_executesql @query;
+
+    -- Step 2: Create the ##straight_results table
+    CREATE TABLE ##straight_results (datas NVARCHAR(MAX), result FLOAT);
+
+    -- Step 3: Separate records where type = 'straight' and evaluate the formulas
+    SET @straightQuery = '';
+
+    SELECT @straightQuery = @straightQuery + 'INSERT INTO ##straight_results (datas, result) 
+                                               SELECT ''' + datas + ''', ' + formulas + ' 
+                                               FROM ##raw_pivot;' 
+    FROM libraries 
+    WHERE type = 'straight';
+
+    EXEC sp_executesql @straightQuery;
+
+    -- Step 4: Pivot the ##straight_results table
+    SELECT @cols = STUFF((SELECT DISTINCT ',' + QUOTENAME(datas) 
+                          FROM ##straight_results 
+                          FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 1, '');
+
+    SET @query = 'SELECT ' + @cols + ' INTO ##straight_pivot FROM 
+                 (SELECT datas, result FROM ##straight_results) AS SourceTable
+                 PIVOT 
+                 (MAX(result) FOR datas IN (' + @cols + ')) AS PivotTable;';
+
+    EXEC sp_executesql @query;
+
+    -- Step 5: Create the ##combined_results table
+    CREATE TABLE ##combined_results (datas NVARCHAR(MAX), result FLOAT);
+
+    -- Combine results from straight and local types
+    SET @localQuery = '';
+
+    -- Insert straight results
+    SET @localQuery = @localQuery + 'INSERT INTO ##combined_results (datas, result) 
+                                      SELECT datas, result FROM ##straight_results;';
+
+    -- Insert local results
+    SELECT @localQuery = @localQuery + 'INSERT INTO ##combined_results (datas, result) 
+                                         SELECT ''' + datas + ''', ' + REPLACE(REPLACE(formulas, 'item1', '[item1]'), 'electronic', '[electronic]') + ' 
+                                         FROM ##straight_pivot;' 
+    FROM libraries 
+    WHERE type = 'local';
+
+    EXEC sp_executesql @localQuery;
+
+    -- Step 6: Pivot the ##combined_results table and insert into output_table
+    SELECT @cols = STUFF((SELECT DISTINCT ',' + QUOTENAME(datas) 
+                          FROM ##combined_results 
+                          FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 1, '');
+
+    SET @finalQuery = 'SELECT ' + @cols + ' INTO dbo.output_table FROM 
+                        (SELECT datas, result FROM ##combined_results) AS SourceTable
+                        PIVOT 
+                        (MAX(result) FOR datas IN (' + @cols + ')) AS PivotTable;';
+
+    EXEC sp_executesql @finalQuery;
+
+    -- Cleanup intermediate tables
+    DROP TABLE ##raw_pivot;
+    DROP TABLE ##straight_results;
+    DROP TABLE ##straight_pivot;
+    DROP TABLE ##combined_results;
+
+    SET NOCOUNT OFF;
+END;
