@@ -40,270 +40,6 @@ ORDER BY qs.total_logical_reads DESC -- logical reads
 
 
 
-
--- for optimization if we do LogDatetime indexed  it reduce the time consumption 
-
-
-
--- Use a CTE to simplify and structure the query
-WITH OrderItemLogs AS (
-    SELECT A.LogDatetime, A.LogAction
-    FROM TRN_OrderItemLog A
-    INNER JOIN #tblUser U ON A.entryby = U.Client_Id
-    LEFT JOIN TRN_Order B ON B.Order_ID = A.Order_ID
-        AND B.EntryDate <> A.LogDatetime
-    WHERE (@FROMDATE IS NULL OR @TODATE IS NULL OR CONVERT(DATE, B.OrderDate, 103) BETWEEN CONVERT(DATE, @FROMDATE, 103) AND CONVERT(DATE, @TODATE, 103))
-)
-
--- Insert distinct results into temporary table
-SELECT DISTINCT CONVERT(VARCHAR(10), LogDatetime, 103) AS LogDate, LogAction
-INTO #TBLORDERLOG
-FROM OrderItemLogs;
-
-
-
-
-SELECT DISTINCT CONVERT(VARCHAR(10), A.LogDatetime, 103) AS LogDate, A.LogAction
-INTO #TBLORDERLOG
-FROM TRN_OrderItemLog A
-INNER JOIN #tblUser U ON A.entryby = U.Client_Id
-LEFT JOIN TRN_Order B WITH (NOLOCK) ON B.Order_ID = A.Order_ID
-WHERE (@FROMDATE IS NULL OR @TODATE IS NULL OR CONVERT(DATE, B.OrderDate, 103) BETWEEN CONVERT(DATE, @FROMDATE, 103) AND CONVERT(DATE, @TODATE, 103))
-AND B.EntryDate <> A.LogDatetime
-
-
-
-indexing on 
-TRN_OrderItemLog.entryby, TRN_OrderItemLog.Order_ID, TRN_Order.Order_ID, TRN_Order.OrderDate, and TRN_Order.EntryDate required 
-
-mainly in where condition column   -- partition
-
-
-
-
-[dbo].[Rep_ClasifiedStock]
-
-
-isnull with 
-
-ex -  Select @IsAgGrid = ISNULL(@IsAgGrid,0)    
-
- SET @IsAgGrid = NULLIF(@IsAgGrid, '');
- 
- 
- 
- 
- 
-
-
-
-
-
-
-
-nocount on 
-
-select * from  dbo.table 
-
-if exists(select 1 from table) 
-
-during joins big table at left side and small on right side
-
-
-
-
-
-1 . 
-
- SET STATISTICS TIME ON;
-	select count(*) from TRN_OrderItemLog
-	 SET STATISTICS TIME off;
-
-	  SET STATISTICS TIME ON;
-	select count(*) from dbo.TRN_OrderItemLog
-	 SET STATISTICS TIME off;
-
-
-(1 row affected)
-
- SQL Server Execution Times:
-   CPU time = 8986 ms,  elapsed time = 21864 ms.
-   
-   
-
-(1 row affected)
-
- SQL Server Execution Times:
-   CPU time = 7860 ms,  elapsed time = 19443 ms.
-
-Completion time: 2024-07-16T14:17:53.2163144+05:30
-
-
-
-
-
-2 . 
-
-SET STATISTICS TIME ON;
- select coalesce(UpdateIP,'') from #test1
-SET STATISTICS TIME off;
-
-SET STATISTICS TIME ON;
-select ISNULL(UpdateIP,'') from #test2
-SET STATISTICS TIME off;
-
-
-SET STATISTICS TIME ON;
-select NULLIF(UpdateIP,'') from #test4
-SET STATISTICS TIME off;
-
-
-
-
-(2094 rows affected)
-
- SQL Server Execution Times:
-   CPU time = 0 ms,  elapsed time = 1 ms.
-
-Completion time: 2024-07-16T14:27:56.7928911+05:29
-
-
-(2094 rows affected)
-
- SQL Server Execution Times:
-   CPU time = 15 ms,  elapsed time = 1 ms.
-
-Completion time: 2024-07-16T14:27:56.7928911+05:30
-
-
-
-(2094 rows affected)
-
- SQL Server Execution Times:
-   CPU time = 0 ms,  elapsed time = 1 ms.
-
-Completion time: 2024-07-16T14:27:56.7928911+05:31
-
-
-
-
-
-
-
-
-3 .
-
-rather than  create temp table , table variable if our (size is small or medium) but we can not use it other codes below like temp 
-
-
-
-
-
-
-
-
- declare @test2 table
- (
- id int 
- );
- DECLARE @Counter INT = 1;
-
--- Loop to insert 1000 rows
-SET NOCOUNT ON;
-WHILE @Counter <= 40000
-BEGIN
-    INSERT INTO @test2 
-    VALUES 
-        (@Counter)
-    
-    SET @Counter = @Counter + 1;
-END;
-
-SET STATISTICS TIME ON;
- select * from @test2
-SET STATISTICS TIME off;
-
-
-
-
-
-
-
-
-
-
-
-
- create table #test
- (
-
- id int 
- )
-
-
- drop table #test
- CREATE TABLE #test (
-    id INT PRIMARY KEY,
-);
-
--- Declare variables
-DECLARE @Counter INT = 1;
-
--- Loop to insert 1000 rows
-SET NOCOUNT ON;
-WHILE @Counter <= 40000
-BEGIN
-    INSERT INTO #test 
-    VALUES 
-        (@Counter)
-    
-    SET @Counter = @Counter + 1;
-END;
-
-select count(*) from #test
-
-
-
-
-SET STATISTICS TIME ON;
-select * from #test
-SET STATISTICS TIME off;
-
-
-temp table takes 16s more for execution and for table variable its o(1) time complexity linear for 40 k row with single column 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 4.
 main
 
@@ -339,417 +75,6 @@ This approach can potentially optimize query performance.
 ---------------
 
 
-
-
-
-
-
--- Create a temporary table #tblColumns
-CREATE TABLE #tblColumns (
-    headerName VARCHAR(500),
-    children VARCHAR(500),
-    field VARCHAR(500),
-    headerCheckboxSelection BIT,
-    headerCheckboxSelectionFilteredOnly BIT,
-    checkboxSelection BIT,
-    valueFormatter VARCHAR(500),
-    cellRenderer VARCHAR(500),
-    rowGroup BIT,
-    width VARCHAR(500),
-    minWidth VARCHAR(500),
-    maxWidth VARCHAR(500),
-    hide BIT,
-    suppressSizeToFit VARCHAR(500),
-    suppressFiltersToolPanel VARCHAR(500),
-    suppressColumnsToolPanel VARCHAR(500),
-    sortable BIT,
-    cellClass VARCHAR(500),
-    editable BIT,
-    cellEditor VARCHAR(500),
-    autoHeight BIT,
-    autoWidth BIT DEFAULT 1,
-    enableRowGroup BIT
-);
-
--- Fetch column metadata into a CTE
-WITH ColumnMetadata AS (
-    SELECT
-        CASE
-            WHEN c.name LIKE '%LOADING%' THEN REPLACE(c.name, 'LOADING', '')
-            ELSE REPLACE(c.name, 'Name', '')
-        END AS headerName,
-        c.name AS children,
-        c.name AS field,
-        200 AS width,
-        CAST(0 AS BIT) AS headerCheckboxSelection,
-        CAST(0 AS BIT) AS headerCheckboxSelectionFilteredOnly,
-        CAST(0 AS BIT) AS checkboxSelection,
-        CASE
-            WHEN c.name LIKE '%LoadingQty%' THEN CAST(1 AS BIT)
-            ELSE CAST(0 AS BIT)
-        END AS hide
-    FROM tempdb.sys.columns c
-    WHERE c.object_id = OBJECT_ID('tempdb..#tblReport')
-)
-
--- Insert data into #tblColumns from the CTE
-INSERT INTO #tblColumns (
-    headerName,
-    children,
-    field,
-    width,
-    headerCheckboxSelection,
-    headerCheckboxSelectionFilteredOnly,
-    checkboxSelection,
-    hide
-)
-SELECT
-    headerName,
-    children,
-    field,
-    width,
-    headerCheckboxSelection,
-    headerCheckboxSelectionFilteredOnly,
-    checkboxSelection,
-    hide
-FROM ColumnMetadata;
-
--- Select data from #tblColumns (for verification or further processing)
-SELECT * FROM #tblColumns;
-
--- Drop the temporary table #tblColumns
-DROP TABLE #tblColumns;
-
-
-
-
-
-
-
-
--------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-SQL Server parse and compile time: 
-   CPU time = 0 ms, elapsed time = 0 ms.
-
- SQL Server Execution Times:
-   CPU time = 0 ms,  elapsed time = 0 ms.
-
- SQL Server Execution Times:
-   CPU time = 0 ms,  elapsed time = 0 ms.
-
- SQL Server Execution Times:
-   CPU time = 5707 ms,  elapsed time = 6717 ms.
-
- SQL Server Execution Times:
-   CPU time = 687 ms,  elapsed time = 3751 ms.
-Warning: Null value is eliminated by an aggregate or other SET operation.
-
- SQL Server Execution Times:
-   CPU time = 0 ms,  elapsed time = 0 ms.
-
- SQL Server Execution Times:
-   CPU time = 0 ms,  elapsed time = 0 ms.
-Warning: Null value is eliminated by an aggregate or other SET operation.
-
- SQL Server Execution Times:
-   CPU time = 78 ms,  elapsed time = 416 ms.
-
- SQL Server Execution Times:
-   CPU time = 16 ms,  elapsed time = 1 ms.
-
- SQL Server Execution Times:
-   CPU time = 6488 ms,  elapsed time = 10903 ms.
-
-Completion time: 2024-07-16T15:59:15.2271327+05:30
-
-
-
-
-
-
-
-
-
-work - 
-
-nullif 8s
-isnull 9s
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-..........................................
-
-
-
-
-
-SELECT TOP 20 SUBSTRING(qt.TEXT, (qs.statement_start_offset/2)+1,
-((CASE qs.statement_end_offset
-WHEN -1 THEN DATALENGTH(qt.TEXT)
-ELSE qs.statement_end_offset
-END - qs.statement_start_offset)/2)+1),
-qs.execution_count,
-qs.total_logical_reads, qs.last_logical_reads,
-qs.total_logical_writes, qs.last_logical_writes,
-qs.total_worker_time,
-qs.last_worker_time,
-qs.total_elapsed_time/1000000 total_elapsed_time_in_S,
-qs.last_elapsed_time/1000000 last_elapsed_time_in_S,
-qs.last_execution_time,
-qp.query_plan
-FROM sys.dm_exec_query_stats qs
-CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) qt
-CROSS APPLY sys.dm_exec_query_plan(qs.plan_handle) qp
-ORDER BY qs.total_logical_reads DESC -- logical reads
--- ORDER BY qs.total_logical_writes DESC -- logical writes
--- ORDER BY qs.total_worker_time DESC -- CPU time
-
-
-  
-  
-  work [Rep_ClasifiedStock_Bk_B_160724] - 6.5 s upto optimized add index to temp table 
-  
-  [dbo].[Rep_ClasifiedStockAfterOrder_Bk_B_170724]  add index and code change little bit
-  
-  
-  
-  
-  
-  
-  
-  
-set statistics time on;
-
-Select Ord.Order_ID,MAX(Reserve.EntryDate) LastReservation ,min(Reserve.EntryDate) FirstReservation    
-Into #ReserveDate  from TRN_Order ORD WITH(NOLOCK)  Left Join TRN_OrderReserve Reserve WITH(NOLOCK) ON  
-Reserve.Order_ID = Ord.Order_ID  Group by Ord.Order_ID
-
-set statistics time off
-
-drop table #ReserveDate
-
-
-
-set statistics time on;
-
-WITH OrderReservations AS (
-    SELECT 
-        Order_ID,
-        MAX(EntryDate) AS LastReservation,
-        MIN(EntryDate) AS FirstReservation
-    FROM 
-        TRN_OrderReserve WITH(NOLOCK)
-    GROUP BY 
-        Order_ID
-)
-SELECT 
-    Ord.Order_ID,
-    ORes.LastReservation,
-    ORes.FirstReservation
-INTO #ReserveDate
-FROM 
-    TRN_Order Ord WITH(NOLOCK)
-LEFT JOIN 
-    OrderReservations ORes ON ORes.Order_ID = Ord.Order_ID;
-
-
-set statistics time off;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
--- notes ---------
-
-OPTION (RECOMPILE);
-
-----------------
-
-
-SET STATISTICS TIME ON;
-exec [dbo].[Rep_ItemClasifiedStockWithBatch_BK_B_170724]
-SET STATISTICS TIME Off;
-
-
- /*
-	SQL Server Execution Times:
-	CPU time = 19083 ms,  elapsed time = 48388 ms.
-   row affected 48225
-   execution time 54 S
-   */
-   
-SET STATISTICS time ON;
-exec  [dbo].[Rep_ItemClasifiedStockWithBatch_BK_DS_08072024]
-SET STATISTICS TIME Off;
-
-
-
-  /*
-   SQL Server Execution Times:
-   CPU time = 38640 ms,  elapsed time = 137613 ms.
-   row affected 48225
-   execution time 1.51 S 
-   */
-
-
-
-new sp after the optimization
-
-
-
-executation plan for this
-
-
-table insert #viewstock (29 %)
-sorting (7%)
-repartition (5%)
-joins (3%) each
-
-
-
-
-
-
-
-
-
-SET STATISTICS TIME ON;
-exec [dbo].[Rep_ItemClasifiedStockWithBatch_BK_B_170724]
-SET STATISTICS TIME Off;
-
-
- /*
-	SQL Server Execution Times:
-	CPU time = 19083 ms,  elapsed time = 48388 ms.
-   row affected 48225
-   execution time 54 S
-   */
-   
-SET STATISTICS time ON;
-exec  [dbo].[Rep_ItemClasifiedStockWithBatch_BK_DS_08072024]
-SET STATISTICS TIME Off;
-
-
-
-  /*
-   SQL Server Execution Times:
-   CPU time = 38640 ms,  elapsed time = 137613 ms.
-   row affected 48225
-   execution time 1.51 S 
-   */
-
-
-
-
-
-
-
-....................................  18-7-24
-
-
-Clasifid 
-With Bach
-AfterOrder
-AfterOrderWithbach
-
-
-
-
-
-
-
-set statistics time on
-
-exec [dbo].[Rep_ClasifiedStockAfterOrder_Bk_O_070624]
-
-set statistics time off
-
-
-
-/*
- SQL Server Execution Times:
-   CPU time = 6406 ms,  elapsed time = 9202 ms.
-
-*/
-
- set statistics time on
-
- exec [dbo].[Rep_ClasifiedStockAfterOrder_Bk_B_180724]
-
- set statistics time off
-
-
-
- /*
-  SQL Server Execution Times:
-     SQL Server Execution Times:
-   CPU time = 5466 ms,  elapsed time = 3785 ms.
-
-	execution time reduce from 9 to 5 s
-
-   */
-   
-   
-   
-   
-   
    
    task 
    
@@ -812,35 +137,6 @@ SET @parameterDefinition = '@City NVARCHAR(50), @Country NVARCHAR(50)';
 EXEC sp_executesql @sqlCommand, @parameterDefinition, @City, @Country;
 
 
-
-
----
-
-
-
-
-
-CREATE OR ALTER PROCEDURE usp_GetEmployeeDetails
-    @TableName NVARCHAR(100),
-    @ColumnName NVARCHAR(100),
-    @SearchKeyword NVARCHAR(100)
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    DECLARE @SQL NVARCHAR(MAX);
-
-    -- Build the dynamic SQL statement with a WHERE clause
-    SET @SQL = N'SELECT ' + QUOTENAME(@ColumnName) + N' FROM ' + QUOTENAME(@TableName) +
-               N' WHERE ' + QUOTENAME(@ColumnName) + N' LIKE @SearchKeyword';
-
-    -- Concatenate the search keyword with wildcards inside the parameter
-    SET @SearchKeyword = '%' + @SearchKeyword + '%';
-
-    -- Execute the dynamic SQL statement
-    EXEC sp_executesql @SQL, N'@SearchKeyword NVARCHAR(100)', @SearchKeyword = @SearchKeyword;
-END;
-GO
 
 
 
@@ -1281,3 +577,1975 @@ EXEC usp_DynamicCrossDatabaseQuery 'OtherDatabase', 'dbo', 'OtherTable';
 
 
 
+
+
+
+
+
+ALTER PROCEDURE DynamicIndexCreation
+    @table_name nvarchar(256),
+    @column_name nvarchar(max),
+    @order_by nvarchar(5),
+    @filter_condition nvarchar(max) = null,
+    @extra_columns nvarchar(max), -- Comma-separated list of extra columns
+    @extra_orders nvarchar(max), -- Comma-separated list of orders for extra columns ('ASC' or 'DESC')
+    @index_name nvarchar(200)
+AS
+BEGIN
+    DECLARE @dynamic_sql nvarchar(max);
+    DECLARE @sort_order nvarchar(5);
+    DECLARE @extra_column_list TABLE (
+        column_name nvarchar(max),
+        sort_order nvarchar(5)
+    );
+
+    -- Extract sort order from @order_by
+    SET @sort_order = CASE 
+                         WHEN @order_by LIKE '%ASC' THEN 'ASC'
+                         WHEN @order_by LIKE '%DESC' THEN 'DESC'
+                         ELSE 'ASC' -- Default to ASC if @order_by doesn't specify
+                      END;
+
+    -- Split @extra_columns and @extra_orders into individual columns and their respective sort orders
+    DECLARE @pos int = 1;
+    DECLARE @pos_next int;
+    DECLARE @extra_column nvarchar(max);
+    DECLARE @extra_order nvarchar(max);
+    SET @extra_columns = LTRIM(RTRIM(@extra_columns)) + ',';
+    SET @extra_orders = LTRIM(RTRIM(@extra_orders)) + ',';
+    
+    WHILE CHARINDEX(',', @extra_columns, @pos) > 0
+    BEGIN
+        SET @pos_next = CHARINDEX(',', @extra_columns, @pos);
+        SET @extra_column = LTRIM(RTRIM(SUBSTRING(@extra_columns, @pos, @pos_next - @pos)));
+        SET @extra_order = LTRIM(RTRIM(SUBSTRING(@extra_orders, @pos, @pos_next - @pos)));
+        SET @pos = @pos_next + 1;
+
+        INSERT INTO @extra_column_list (column_name, sort_order)
+        VALUES (@extra_column, @extra_order);
+    END;
+
+    -- Build dynamic SQL
+    SET @dynamic_sql = 'CREATE INDEX ' + QUOTENAME(@index_name) + ' ON ' + QUOTENAME(@table_name) + ' (' + QUOTENAME(@column_name) + ' ' + @sort_order;
+
+    DECLARE @sql_extra_columns nvarchar(max) = '';
+
+    DECLARE cur_extra_columns CURSOR FOR 
+    SELECT column_name, sort_order
+    FROM @extra_column_list;
+
+    OPEN cur_extra_columns;
+    FETCH NEXT FROM cur_extra_columns INTO @extra_column, @extra_order;
+    
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        SET @sql_extra_columns = @sql_extra_columns + ', ' + QUOTENAME(@extra_column) + ' ' + @extra_order;
+        FETCH NEXT FROM cur_extra_columns INTO @extra_column, @extra_order;
+    END;
+
+    CLOSE cur_extra_columns;
+    DEALLOCATE cur_extra_columns;
+
+    SET @dynamic_sql = @dynamic_sql + @sql_extra_columns + ')';
+
+    IF @filter_condition IS NOT NULL
+    BEGIN
+        SET @dynamic_sql = @dynamic_sql + ' WHERE ' + @filter_condition;
+    END
+
+    PRINT @dynamic_sql; -- For debugging purposes
+
+    EXEC sp_executesql @dynamic_sql;
+END
+
+
+
+
+
+
+
+EXEC DynamicIndexCreation 
+    @table_name = 'Employee',
+    @column_name = 'LastName',
+    @order_by = 'ASC',
+    @filter_condition = NULL,
+    @extra_columns = 'Company_name',
+    @extra_orders = 'DESC', -- Specify ASC or DESC for each extra column
+    @index_name = 'IX_Employee';
+
+
+
+
+
+
+
+--------------------
+
+
+
+
+alter proc DynamicIndexCreation
+@table_name nvarchar(256),
+@Column_name  nvarchar(max),
+@order_by  nvarchar(5),
+@filter_condition  nvarchar(max) = null,
+@Extra_column  nvarchar(max) = null,
+@index_name  nvarchar(200)
+as
+begin
+
+declare @dynamic_sql   nvarchar(max);
+
+set @dynamic_sql = 'create index ' + @index_name + ' on ' + @table_name + ' ( ' + @Column_name + ' ' + @order_by +  ' ) '  
+
+print @dynamic_sql
+
+if @Extra_column is not null
+begin
+set @dynamic_sql = @dynamic_sql + ' ( ' + @Column_name + ' ' + @order_by +  ' ) '  
+end
+exec sp_executesql @dynamic_sql
+if @filter_condition is not null
+begin
+
+set @dynamic_sql = @dynamic_sql + ' where ' + @filter_condition
+end
+exec sp_executesql @dynamic_sql
+
+
+end
+
+
+DynamicIndexCreation @table_name = 'db3.dbo.company' , @Column_name = 'department_id',@order_by = 'asc' , @index_name = 'c_id_index' 
+
+drop index company.c_id_index
+
+select * from db3.dbo.company 
+
+sp_help 'company'
+
+create index c_id_index on db3.dbo.company (company_id) where company_id > 3
+
+
+
+
+-----------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-- Create Airports table
+CREATE TABLE Airports (
+    AirportCode VARCHAR(3) PRIMARY KEY,
+    AirportName VARCHAR(100)
+);
+
+
+
+-- Create Flights table
+CREATE TABLE Flights (
+    FlightNumber INT PRIMARY KEY,
+    DepartureAirportCode VARCHAR(3),
+    DestinationAirportCode VARCHAR(3),
+    DepartureDateTime DATETIME,
+    ArrivalDateTime DATETIME,
+    AvailableSeats INT,
+    Price DECIMAL(10, 2),
+    CONSTRAINT FK_DepartureAirport FOREIGN KEY (DepartureAirportCode) REFERENCES Airports (AirportCode),
+    CONSTRAINT FK_DestinationAirport FOREIGN KEY (DestinationAirportCode) REFERENCES Airports (AirportCode)
+);
+
+
+
+-- Create Passengers table
+CREATE TABLE Passengers (
+    PassengerID INT PRIMARY KEY,
+    FirstName VARCHAR(50),
+    LastName VARCHAR(50),
+    Email VARCHAR(100),
+    Phone VARCHAR(20),
+    FlightNumber INT,
+    SeatNumber VARCHAR(10),
+    CONSTRAINT FK_FlightNumber FOREIGN KEY (FlightNumber) REFERENCES Flights (FlightNumber)
+);
+
+
+CREATE TABLE CouponCodes (
+    Code VARCHAR(20) PRIMARY KEY,
+    Discount DECIMAL(5, 2)
+);
+
+
+
+-- Insert data into Airports table
+INSERT INTO Airports (AirportCode, AirportName)
+VALUES 
+    ('JFK', 'John F. Kennedy International Airport'),
+    ('LAX', 'Los Angeles International Airport'),
+    ('LHR', 'London Heathrow Airport'),
+    ('CDG', 'Paris Charles de Gaulle Airport'),
+    ('DEL', 'Indira Gandhi International Airport'),
+    ('SFO', 'San Francisco International Airport');
+
+-- Insert data into Flights table
+INSERT INTO Flights (FlightNumber, DepartureAirportCode, DestinationAirportCode, DepartureDateTime, ArrivalDateTime, AvailableSeats, Price)
+VALUES 
+    (1, 'JFK', 'LAX', '2024-05-01 08:00:00', '2024-05-01 11:00:00', 150, 300.00),
+    (2, 'LHR', 'CDG', '2024-05-02 10:00:00', '2024-05-02 12:00:00', 100, 200.00),
+    (3, 'SFO', 'LAX', '2024-05-03 09:00:00', '2024-05-03 10:30:00', 200, 150.00),
+    (4, 'CDG', 'DEL', '2024-05-04 12:00:00', '2024-05-04 23:00:00', 50, 500.00),
+    (5, 'DEL', 'JFK', '2024-05-05 14:00:00', '2024-05-05 22:00:00', 80, 700.00);
+
+-- Insert data into CouponCodes table
+INSERT INTO CouponCodes (Code, Discount)
+VALUES 
+    ('Flight10', 0.10),
+    ('SpringSale', 0.15),
+    ('SummerDeal', 0.20);
+
+
+
+	-- Select all records from Airports table
+SELECT * FROM Airports;
+
+-- Select all records from Flights table
+SELECT * FROM Flights;
+
+-- Select all records from Passengers table
+SELECT * FROM Passengers;
+
+-- Select all records from CouponCodes table
+SELECT * FROM CouponCodes;
+
+
+
+INSERT INTO Airports (AirportCode, AirportName)
+VALUES 
+    ('DEL', 'Indira Gandhi International Airport'),
+    ('BOM', 'Chhatrapati Shivaji Maharaj International Airport'),
+    ('MAA', 'Chennai International Airport'),
+    ('BLR', 'Kempegowda International Airport'),
+    ('HYD', 'Rajiv Gandhi International Airport'),
+    ('CCU', 'Netaji Subhas Chandra Bose International Airport');
+
+		
+-- Insert flights departing from and arriving at Indian airports
+INSERT INTO Flights (FlightNumber, DepartureAirportCode, DestinationAirportCode, DepartureDateTime, ArrivalDateTime, AvailableSeats, Price)
+VALUES 
+    (6, 'DEL', 'BOM', '2024-05-10 09:00:00', '2024-05-10 11:00:00', 120, 250.00),
+    (7, 'BOM', 'MAA', '2024-05-11 10:00:00', '2024-05-11 12:00:00', 100, 300.00),
+    (8, 'DEL', 'BLR', '2024-05-12 11:00:00', '2024-05-12 13:00:00', 150, 280.00),
+    (9, 'MAA', 'HYD', '2024-05-13 12:00:00', '2024-05-13 14:00:00', 80, 200.00),
+    (10, 'HYD', 'CCU', '2024-05-14 13:00:00', '2024-05-14 15:00:00', 90, 320.00);
+
+
+
+
+
+
+	alter PROCEDURE SearchAndBookFlight
+    @DepartureAirportCode VARCHAR(3),
+    @DestinationAirportCode VARCHAR(3),
+    @DepartureDate DATE,
+    @TicketCount INT,
+    @FirstName VARCHAR(50) = NULL,
+    @LastName VARCHAR(50) = NULL,
+    @Email VARCHAR(100) = NULL,
+    @Phone VARCHAR(20) = NULL,
+    @PaymentOption VARCHAR(10) = 'offline', -- Default payment option is offline
+    @CouponCode VARCHAR(20) = NULL,
+    @SeatCategoryType VARCHAR(20)
+AS
+BEGIN
+    -- Check if TicketCount is greater than 1
+    IF @TicketCount > 1
+    BEGIN
+        PRINT 'Sorry, TicketCount should not be greater than 1 for this operation.';
+        RETURN;
+    END
+
+    DECLARE @FlightNumber INT;
+    DECLARE @Price DECIMAL(10, 2);
+    DECLARE @Discount DECIMAL(5, 2);
+    DECLARE @FinalPrice DECIMAL(10, 2);
+
+    -- Search for available flights
+    SELECT TOP 1 @FlightNumber = FlightNumber, @Price = Price
+    FROM Flights
+    WHERE DepartureAirportCode = @DepartureAirportCode
+    AND DestinationAirportCode = @DestinationAirportCode
+    AND CONVERT(DATE, DepartureDateTime) = @DepartureDate
+    AND AvailableSeats >= @TicketCount;
+
+    -- If a flight is found
+    IF @FlightNumber IS NOT NULL
+    BEGIN
+        -- Check if a passenger with the same email already booked for this flight
+        IF EXISTS (SELECT 1 FROM Passengers WHERE Email = @Email AND FlightNumber = @FlightNumber)
+        BEGIN
+            PRINT 'Sorry, a ticket has already been booked for this flight with the provided email.';
+            RETURN;
+        END
+
+        -- Determine if the destination is domestic or international
+        DECLARE @IsDomestic BIT;
+        IF @DestinationAirportCode IN ('DEL', 'BOM', 'MAA','BLR','HYD','CCU') -- Assuming these are domestic destinations
+            SET @IsDomestic = 1;
+        ELSE
+            SET @IsDomestic = 0;
+
+        -- Apply discounts based on flight type (domestic/international) and payment option
+        IF @IsDomestic = 1
+            SET @Discount = 0.20; -- 20% discount for domestic flights
+        ELSE
+            SET @Discount = 0.30; -- 30% discount for international flights
+
+        IF @PaymentOption = 'online' -- Online payment
+            SET @Discount = @Discount + 0.05; -- Additional 5% discount for online payment
+
+        -- Check if a coupon code is provided
+        IF @CouponCode IS NOT NULL
+        BEGIN
+            DECLARE @CouponDiscount DECIMAL(5, 2);
+            SELECT @CouponDiscount = Discount FROM CouponCodes WHERE Code = @CouponCode;
+
+            IF @CouponDiscount IS NOT NULL
+                SET @Discount = @Discount + @CouponDiscount;
+        END
+
+        -- Adjust price based on seat category type
+        IF @SeatCategoryType = 'Economy'
+            SET @Price = @Price;
+        ELSE IF @SeatCategoryType = 'Premium Economy'
+            SET @Price = 2 * @Price;
+        ELSE IF @SeatCategoryType = 'Business'
+            SET @Price = 2.5 * @Price;
+        ELSE
+        BEGIN
+            PRINT 'Invalid Seat Category Type.';
+            RETURN;
+        END
+
+        -- Calculate final price after discounts
+        SET @FinalPrice = (@Price * @TicketCount) - ((@Price * @TicketCount) * @Discount); -- Calculate total price for all tickets
+
+        -- Book the flight for each ticket
+        DECLARE @Counter INT = 1;
+        WHILE @Counter <= @TicketCount
+        BEGIN
+            -- Generate a unique PassengerID for each ticket
+            DECLARE @PassengerID INT;
+            SET @PassengerID = (SELECT ISNULL(MAX(PassengerID), 0) + 1 FROM Passengers);
+
+            -- Insert passenger details into Passengers table
+            INSERT INTO Passengers (PassengerID, FirstName, LastName, Email, Phone, FlightNumber, SeatNumber)
+            VALUES (@PassengerID, @FirstName, @LastName, @Email, @Phone, @FlightNumber, 'A' + CAST(@Counter AS VARCHAR(10)));
+
+            SET @Counter = @Counter + 1;
+        END
+
+        -- Update available seats in Flights table
+        UPDATE Flights
+        SET AvailableSeats = AvailableSeats - @TicketCount
+        WHERE FlightNumber = @FlightNumber;
+
+        -- Display success message and final price
+        PRINT 'Flight(s) booked successfully!';
+        PRINT 'Final Price: ' + CAST(@FinalPrice AS VARCHAR(20));
+        PRINT 'Thank you for using our service!';
+        PRINT '      __|__';
+        PRINT ' ---o--(_)--o---';
+        PRINT '       |_|';
+    END
+    ELSE
+    BEGIN
+        PRINT 'Sorry, no available flights for the specified criteria or insufficient seats for the requested ticket count.';
+    END;
+END;
+
+
+
+
+
+
+EXEC SearchAndBookFlight 
+    @DepartureAirportCode = 'JFK',
+    @DestinationAirportCode = 'LAX',
+    @DepartureDate = '2024-05-01',
+    @TicketCount = 2,
+    @FirstName = 'Bhushan',
+    @LastName = 'Sagar',
+    @Email = 'BhushanSagar@.com',
+    @Phone = '1234567890',
+    @PaymentOption = 'online',
+    @CouponCode = 'SpringSale',
+    @SeatCategoryType = 'Business';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--------------------------------------------------
+
+
+
+
+
+
+-- task 1 bank system
+use database sql_trigger_tasks
+
+-- Create BankMasterTbl table
+CREATE TABLE BankMasterTbl (
+    AcId INT PRIMARY KEY IDENTITY,
+    AcHolderName VARCHAR(50) NOT NULL,
+    AcBalance MONEY,
+    AcStatus VARCHAR(10) CHECK (AcStatus IN ('Active', 'Deactive'))
+);
+
+-- Create Txntbl table
+CREATE TABLE Txntbl (
+    TxnId INT PRIMARY KEY IDENTITY,
+    AcId INT NOT NULL,
+    DateOfTxn DATETIME NOT NULL DEFAULT(GETDATE()),
+    TypeOfTxn VARCHAR(20) NOT NULL CHECK (TypeOfTxn IN ('CD', 'CW')),
+    TxnAmount MONEY NOT NULL,
+    AllowHigherTxn BIT DEFAULT(0)
+);
+
+-- Create Passbook table
+CREATE TABLE Passbook (
+    PassbookId INT PRIMARY KEY IDENTITY,
+    TxnId INT,
+    AcId INT,
+    DateOfTxn DATETIME,
+    TypeOfTxn VARCHAR(20),
+    TxnAmount MONEY,
+    CONSTRAINT FK_Txntbl FOREIGN KEY (TxnId) REFERENCES Txntbl(TxnId)
+);
+
+
+
+
+INSERT INTO BankMasterTbl (AcHolderName, AcBalance, AcStatus)
+VALUES 
+('Bhushan Sagar', 9500, 'Active'),
+('swaraj pawar', 50000, 'Active'),
+('vijender raika', 124000, 'Active'),
+('navin gaud', 0, 'Deactive'),
+('tushar shinde', 24000, 'Active'),
+('harshal raundal', 0, 'Deactive')
+;
+
+SELECT * FROM BankMasterTbl;
+SELECT * FROM Passbook;
+SELECT * FROM Txntbl;
+
+
+
+
+
+CREATE OR ALTER TRIGGER BankBalanceUpdate
+ON Txntbl
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+/*
+
+SET NOCOUNT ON;: This statement prevents the "N rows affected" message from being returned as part of the trigger's result set. 
+It can help improve performance by reducing network traffic.
+
+*/
+    -- Inserted data
+    DECLARE @AcId INT,
+            @TypeOfTxn VARCHAR(20),
+            @TxnAmount MONEY;
+
+    -- Get the inserted data
+    SELECT @AcId = AcId, @TypeOfTxn = TypeOfTxn, @TxnAmount = TxnAmount
+    FROM inserted;
+
+
+/*
+declares and initializes variables @AcId, @TypeOfTxn, and @TxnAmount to hold data from the inserted pseudo-table. 
+The inserted table holds copies of the affected rows during an insert or update operation. 
+Here, we retrieve the values for the newly inserted row.
+
+*/
+    -- Check account status
+    DECLARE @AcStatus VARCHAR(10);
+    SELECT @AcStatus = AcStatus FROM BankMasterTbl WHERE AcId = @AcId;
+
+    -- Check if account is deactivated
+    IF @AcStatus = 'Deactive'
+    BEGIN
+        PRINT 'Account is deactivated';
+        ROLLBACK TRANSACTION;
+        RETURN;
+    END;
+
+    -- Check transaction limit for the day
+    IF (SELECT COUNT(*)
+        FROM Txntbl
+        WHERE AcId = @AcId
+        AND CAST(DateOfTxn AS DATE) = CAST(GETDATE() AS DATE)
+        AND TypeOfTxn = @TypeOfTxn) > 3
+    BEGIN
+        PRINT 'Transaction limit exceeded';
+        ROLLBACK TRANSACTION;
+        RETURN;
+    END;
+
+
+
+/*
+ check the status of the account associated with the transaction. 
+ The BankMasterTbl table stores account information, including the status. 
+ If the account is deactivated, we print a message, roll back the transaction, 
+ and exit the trigger using RETURN.
+ */
+
+    -- Higher Transaction authority up to 1 lakh with tax
+    IF @TxnAmount > 40000 AND @TypeOfTxn = 'CW'
+    BEGIN
+        IF (SELECT TOP 1 AllowHigherTxn FROM Txntbl WHERE AcId = @AcId ORDER BY DateOfTxn DESC) = 0 OR @TxnAmount > 100000
+        BEGIN
+            PRINT 'Transaction is not allowed above ' + (CASE WHEN @TxnAmount > 100000 THEN '100000' ELSE '40000' END);
+            ROLLBACK TRANSACTION;
+            RETURN;
+        END;
+        ELSE
+        BEGIN
+            SET @TxnAmount = @TxnAmount + ((@TxnAmount - 40000) * 0.1);
+        END;
+    END;
+
+
+	/*
+	handles higher transaction authority for withdrawal transactions ('CW') with amounts exceeding 40,000. 
+	It checks if the transaction is allowed based on previous transactions and adjusts the transaction amount with tax if necessary.
+	*/
+
+    -- Update account balance based on transaction type
+    IF @TypeOfTxn = 'CD'
+    BEGIN
+        UPDATE BankMasterTbl
+        SET AcBalance = AcBalance + @TxnAmount
+        WHERE AcId = @AcId;
+    END;
+    ELSE IF @TypeOfTxn = 'CW'
+    BEGIN
+        -- Check if there's sufficient balance after maintaining minimum balance
+        DECLARE @NewBalance MONEY;
+        SELECT @NewBalance = AcBalance - @TxnAmount FROM BankMasterTbl WHERE AcId = @AcId;
+
+        IF @NewBalance < 1000
+        BEGIN
+            PRINT 'Insufficient balance after maintaining minimum balance';
+            ROLLBACK TRANSACTION;
+            RETURN;
+        END;
+
+        -- Update account balance
+        UPDATE BankMasterTbl
+        SET AcBalance = @NewBalance
+        WHERE AcId = @AcId;
+    END;
+
+	/*
+	update the account balance based on the transaction type ('CD' for deposit and 'CW' for withdrawal). 
+	For withdrawals, we first calculate the new balance and ensure it doesn't fall below the minimum balance requirement (1000). 
+	If it does, we print a message, roll back the transaction, and exit the trigger.
+	*/
+
+    -- Insert into Passbook
+    INSERT INTO Passbook (TxnId, AcId, DateOfTxn, TypeOfTxn, TxnAmount)
+    VALUES ((SELECT TOP 1 TxnId FROM inserted), @AcId, GETDATE(), @TypeOfTxn, @TxnAmount);
+END;
+
+/*
+we insert the transaction details into the Passbook table using the values from the inserted
+*/
+
+
+
+
+
+SELECT * FROM BankMasterTbl;
+SELECT * FROM Passbook;
+SELECT * FROM Txntbl;
+
+
+-- Insert some transactions for active accounts
+
+INSERT INTO Txntbl (AcId, TypeOfTxn, TxnAmount) VALUES  -- Withdrawal
+(3, 'CW', 50000)-- deposite
+
+INSERT INTO Txntbl (AcId, TypeOfTxn, TxnAmount) VALUES  -- Deposit
+(3, 'CW', 2000)  -- Withdrawal
+
+-- Insert data in deactivate account
+
+INSERT INTO Txntbl (AcId, TypeOfTxn, TxnAmount) VALUES  -- Deposit
+(4, 'CW', 2000)
+
+-- widrow more than 1000 min balance
+INSERT INTO Txntbl (AcId, TypeOfTxn, TxnAmount) VALUES  -- Deposit
+(1, 'CW', 9000)
+
+-- widrow not more than 40 k 
+INSERT INTO Txntbl (AcId, TypeOfTxn, TxnAmount) VALUES  -- Deposit
+(3, 'CW', 50000)
+
+
+
+
+
+
+
+
+
+
+-- task 2 library system
+
+CREATE TABLE StudentDetailMaster (
+    enrollment_id INT ,
+    student_name VARCHAR(100),
+    dept_id INT,
+    contact_detail VARCHAR(100),
+    date_of_admission DATE,
+    email_id VARCHAR(100),
+    status VARCHAR(20) CHECK (status IN ('active', 'detained'))
+);
+
+-- Creating the Book Details table
+CREATE TABLE BookDetails (
+    book_id INT,
+    book_name VARCHAR(100),
+    author VARCHAR(100),
+    category_id INT,
+    edition VARCHAR(50),
+    publisher VARCHAR(100),
+    available_stock INT
+);
+
+-- Creating the Category table
+CREATE TABLE Category (
+    category_id INT PRIMARY KEY,
+    category_name VARCHAR(50)
+);
+
+-- Inserting data into the Category table
+INSERT INTO Category (category_id, category_name) VALUES
+(1, 'history'),
+(2, 'geography'),
+(3, 'technical'),
+(4, 'business');
+
+
+-- Creating the Book Issue Details table
+CREATE TABLE BookIssueDetails (
+    transaction_id INT identity(1,1),
+    book_id INT,
+    student_id INT,
+    date_of_issue DATE,
+    return_date DATE,
+    status VARCHAR(20) DEFAULT 'issue',
+    penalty INT,
+    
+);
+
+
+CREATE TABLE NotReturnedBooks (
+    student_id INT,
+    book_id INT,
+    overdue_days INT
+);
+
+
+SELECT * FROM Category;
+
+
+
+SELECT * FROM StudentDetailMaster;
+SELECT * FROM BookDetails;
+SELECT * FROM BookIssueDetails;
+select * from NotReturnedBooks 
+
+
+
+truncate table NotReturnedBooks
+
+
+truncate table BookIssueDetails
+
+EXEC ManageBookIssueReturn @p_book_id = 1, @p_student_id = 1003, @p_action = 'issue';
+EXEC ManageBookIssueReturn @p_book_id = 2, @p_student_id = 1002, @p_action = 'issue', @p_issue_date = '2024-03-01';
+EXEC ManageBookIssueReturn @p_book_id = 1, @p_student_id = 1001, @p_action = 'return';
+EXEC ManageBookIssueReturn @p_book_id = 2, @p_student_id = 1002, @p_action = 'return', @p_return_date = '2024-09-23';
+
+
+-- Inserting data into StudentDetailMaster table
+INSERT INTO StudentDetailMaster (enrollment_id, student_name, dept_id, contact_detail, date_of_admission, email_id, status) VALUES
+(1001, 'swaraj pawar', 1, '1234567890', '2023-09-01', 'swaraj.pawar@example.com', 'active'),
+(1002, 'tushar shinde', 2, '0987654321', '2023-09-01', 'tushar.shinde@example.com', 'active'),
+(1003, 'Darshan rahane', 1, '9876543210', '2023-09-01', 'Darshan.rahane@example.com', 'detained');
+
+
+-- Inserting data into BookDetails table
+INSERT INTO BookDetails (book_id, book_name, author, category_id, edition, publisher, available_stock) VALUES
+(1, 'Introduction to History', 'amol History', 1, '1st Edition', 'History Books Inc.', 10),
+(2, 'Geography Basics', 'lakshay Geography', 2, '2nd Edition', 'Geography Publishers Ltd.', 5),
+(3, 'Technical Manual', 'suyash Tech', 3, '3rd Edition', 'Tech Books Co.', 8),
+(4, 'Business Strategies', 'harnoor Business', 4, '4th Edition', 'Business Books Corp.', 12);
+
+
+-- Inserting data into BookIssueDetails table
+-- Assuming John Doe (student_id: 1001) issued book_id 1 and book_id 2
+-- and Jane Smith (student_id: 1002) issued book_id 3
+INSERT INTO BookIssueDetails (book_id, student_id, date_of_issue, return_date, status, penalty) VALUES
+(1, 1001, '2024-03-30', NULL, 'issue', NULL),
+(2, 1001, '2024-03-30', NULL, 'issue', NULL),
+(3, 1002, '2024-03-30', NULL, 'issue', NULL);
+
+
+
+
+
+
+CREATE or alter PROCEDURE ManageBookIssueReturn
+    @p_book_id INT,
+    @p_student_id INT,
+    @p_action VARCHAR(10), -- 'issue' or 'return'
+    @p_issue_date DATE = NULL,
+    @p_return_date DATE = NULL
+AS
+BEGIN
+    DECLARE @v_available_stock INT;
+    DECLARE @v_student_status VARCHAR(20);
+    DECLARE @v_book_status VARCHAR(20);
+    DECLARE @v_books_issued INT;
+    DECLARE @v_days_overdue INT;
+    DECLARE @v_penalty_amount DECIMAL(10,2);
+    
+    -- Get available stock of the book
+    SELECT @v_available_stock = available_stock FROM BookDetails WHERE book_id = @p_book_id;
+    
+    -- Check if book exists and there is available stock
+    IF @v_available_stock IS NOT NULL AND @v_available_stock > 0
+    BEGIN
+        IF @p_action = 'issue'
+        BEGIN
+            -- Check if the student is eligible to issue the book (active status)
+            SELECT @v_student_status = status FROM StudentDetailMaster WHERE enrollment_id = @p_student_id;
+            IF @v_student_status = 'active'
+            BEGIN
+                -- Check the number of books already issued to the student
+                SELECT @v_books_issued = COUNT(*) FROM BookIssueDetails WHERE student_id = @p_student_id AND status = 'issue';
+                IF @v_books_issued < 3
+                BEGIN
+                    -- Decrease available stock by 1
+                    UPDATE BookDetails SET available_stock = available_stock - 1 WHERE book_id = @p_book_id;
+                    -- Issue the book
+                    INSERT INTO BookIssueDetails (book_id, student_id, date_of_issue, status) 
+                    VALUES (@p_book_id, @p_student_id, ISNULL(@p_issue_date, GETDATE()), 'issue');
+                    SELECT 'Book issued successfully.' AS message;
+                END
+                ELSE
+                BEGIN
+                    SELECT 'Maximum limit of 3 books reached. Cannot issue more books.' AS message;
+                END
+            END
+            ELSE
+            BEGIN
+                SELECT 'Student is not active. Cannot issue book.' AS message;
+            END
+        END
+        ELSE IF @p_action = 'return'
+        BEGIN
+            -- Check if the book is issued to the student
+            SELECT @v_book_status = status FROM BookIssueDetails WHERE book_id = @p_book_id AND student_id = @p_student_id AND status = 'issue';
+            IF @v_book_status IS NOT NULL
+            BEGIN
+                -- Calculate the number of days the book is overdue
+                SELECT @v_days_overdue = DATEDIFF(DAY, ISNULL(@p_issue_date, (SELECT date_of_issue FROM BookIssueDetails WHERE book_id = @p_book_id AND student_id = @p_student_id AND status = 'issue')), ISNULL(@p_return_date, GETDATE())) - 15;
+                IF @v_days_overdue > 0
+                BEGIN
+                    -- Calculate penalty amount
+                    SET @v_penalty_amount = @v_days_overdue * 1.0; -- Assuming penalty of 1 rupee per day
+                    -- Increase available stock by 1
+                    UPDATE BookDetails SET available_stock = available_stock + 1 WHERE book_id = @p_book_id;
+                    -- Update return date, status to 'return', and penalty amount
+                    UPDATE BookIssueDetails SET return_date = ISNULL(@p_return_date, GETDATE()), status = 'return', penalty = @v_penalty_amount 
+                    WHERE book_id = @p_book_id AND student_id = @p_student_id AND status = 'issue';
+                    SELECT 'Book returned successfully. Penalty charged: ' + CAST(@v_penalty_amount AS VARCHAR(20)) + ' rupees.' AS message;
+                END
+                ELSE
+                BEGIN
+                    -- No penalty charged
+                    UPDATE BookDetails SET available_stock = available_stock + 1 WHERE book_id = @p_book_id;
+                    -- Update return date and status to 'return'
+                    UPDATE BookIssueDetails SET return_date = ISNULL(@p_return_date, GETDATE()), status = 'return' 
+                    WHERE book_id = @p_book_id AND student_id = @p_student_id AND status = 'issue';
+                    SELECT 'Book returned successfully. No penalty charged.' AS message;
+                END
+
+                -- Check if the book is not returned for 180 days and insert into NotReturnedBooks table
+                IF @v_days_overdue > 180
+                BEGIN
+                    INSERT INTO NotReturnedBooks (student_id, book_id, overdue_days)
+                    VALUES (@p_student_id, @p_book_id, @v_days_overdue);
+                END
+            END
+            ELSE
+            BEGIN
+                SELECT 'Book is not issued to the student. Cannot return.' AS message;
+            END
+        END
+        ELSE
+        BEGIN
+            SELECT 'Invalid action. Please specify either "issue" or "return".' AS message;
+        END
+    END
+    ELSE
+    BEGIN
+        SELECT 'Book not available in stock.' AS message;
+    END
+END
+
+
+
+
+-- pizza order system 
+
+
+-- Create table
+CREATE TABLE customertbl (
+    customer_id INT PRIMARY KEY,
+    customername VARCHAR(100),
+    contact_detail VARCHAR(100),
+    emailid VARCHAR(100)
+);
+
+-- Insert data
+INSERT INTO customertbl (customer_id, customername, contact_detail, emailid)
+VALUES
+    (1, 'John Doe', '123-456-7890', 'john.doe@example.com'),
+    (2, 'Jane Smith', '987-654-3210', 'jane.smith@example.com'),
+    (3, 'Alice Johnson', '555-123-4567', 'alice.johnson@example.com');
+
+	
+	-- Create table
+CREATE TABLE ordertble (
+    dateoforder DATE,
+    o_id INT identity(1,1),
+    cid INT,
+    pid INT,
+    size_id INT,
+    quantity INT,
+    tax DECIMAL(10, 2),
+    totalprice DECIMAL(10, 2),
+    payment_mode VARCHAR(20),
+    order_mode VARCHAR(20)
+);
+
+
+
+
+
+	-- Create table
+CREATE TABLE product (
+    pid INT PRIMARY KEY,
+    pname VARCHAR(100),
+    price DECIMAL(10, 2)
+);
+
+-- Insert data for pizza
+INSERT INTO product (pid, pname, price)
+VALUES
+    (201, 'Margherita Pizza', 10.99),
+    (202, 'Pepperoni Pizza', 12.99),
+    (203, 'Vegetarian Pizza', 11.99);
+
+
+	-- Create table
+CREATE TABLE size (
+    size_id INT PRIMARY KEY,
+    size_name VARCHAR(10)
+);
+
+-- Insert data for pizza sizes
+INSERT INTO size (size_id, size_name)
+VALUES
+    (1, 'S'),
+    (2, 'M'),
+    (3, 'L');
+
+
+
+   CREATE TABLE MonthlyOrders (
+        cid INT,
+        cname VARCHAR(100),
+        total_amount DECIMAL(10, 2)
+    );
+
+
+
+
+
+
+
+
+CREATE OR ALTER PROCEDURE PlaceOrder 
+    @cid INT,
+    @pid INT,
+    @size_id INT,
+    @quantity INT,
+    @payment_mode VARCHAR(20),
+    @order_mode VARCHAR(20),
+    @dateoforder DATE = NULL -- Optional parameter for date of order
+AS
+BEGIN
+    DECLARE @price DECIMAL(10, 2)
+    DECLARE @total DECIMAL(10, 2)
+    DECLARE @discount DECIMAL(10, 2)
+    
+    -- Set dateoforder to current date if not provided
+    IF @dateoforder IS NULL
+        SET @dateoforder = GETDATE();
+
+    -- Get the price of the pizza
+    SELECT @price = price
+    FROM product
+    WHERE pid = @pid;
+
+    -- Check if today is Monday, Tuesday, Thursday, Wednesday, or Friday
+    IF (DATENAME(WEEKDAY, @dateoforder) IN ('Monday', 'Tuesday', 'Thursday') AND @size_id != 1)
+        OR (DATENAME(WEEKDAY, @dateoforder) IN ('Wednesday', 'Friday') AND @size_id = 2)
+        OR (DATENAME(WEEKDAY, @dateoforder) IN ('Saturday', 'Sunday') AND @payment_mode = 'Online')
+    BEGIN
+        -- Calculate total price for pizzas with discount
+        SET @total = 0;
+        DECLARE @i INT = 1;
+
+        WHILE @i <= @quantity
+        BEGIN
+            IF @i % 2 = 0 -- Every second pizza
+                SET @total = @total + @price / 2;
+            ELSE
+                SET @total = @total + @price;
+                
+            SET @i = @i + 1;
+        END
+        
+        -- Insert the order into the ordertble
+        INSERT INTO ordertble (dateoforder, cid, pid, size_id, quantity, tax, totalprice, payment_mode, order_mode)
+        VALUES
+            (@dateoforder, @cid, @pid, @size_id, @quantity, 0, @total, @payment_mode, @order_mode);
+    END
+    ELSE
+    BEGIN
+        -- Calculate total price for all pizzas without discount
+        SET @total = @price * @quantity;
+        
+        -- Insert the order into the ordertble
+        INSERT INTO ordertble (dateoforder, cid, pid, size_id, quantity, tax, totalprice, payment_mode, order_mode)
+        VALUES
+            (@dateoforder, @cid, @pid, @size_id, @quantity, 0, @total, @payment_mode, @order_mode);
+    END
+    
+    -- Update MonthlyOrders table
+    DECLARE @totalMonthAmount DECIMAL(10, 2)
+    SELECT @totalMonthAmount = SUM(totalprice)
+    FROM ordertble
+    WHERE cid = @cid
+    AND MONTH(dateoforder) = MONTH(@dateoforder)
+    AND YEAR(dateoforder) = YEAR(@dateoforder);
+
+    IF @totalMonthAmount IS NOT NULL
+    BEGIN
+        -- Check if all days of the month have been ordered
+        DECLARE @totalDaysInMonth INT
+        SELECT @totalDaysInMonth = DAY(EOMONTH(@dateoforder))
+
+        DECLARE @orderedDaysInMonth INT
+        SELECT @orderedDaysInMonth = COUNT(DISTINCT DAY(dateoforder))
+        FROM ordertble
+        WHERE cid = @cid
+        AND MONTH(dateoforder) = MONTH(@dateoforder)
+        AND YEAR(dateoforder) = YEAR(@dateoforder)
+
+        IF @totalDaysInMonth = @orderedDaysInMonth
+        BEGIN
+            -- Insert into MonthlyOrders if all days of the month have been ordered
+            INSERT INTO MonthlyOrders (cid, cname, total_amount)
+            VALUES (@cid, (SELECT customername  FROM customertbl WHERE customer_id = @cid), @totalMonthAmount);
+        END
+    END
+END;
+
+
+select *from customertbl
+
+EXEC PlaceOrder 
+    @cid = 101,
+    @pid = 201,
+    @size_id = 1,
+    @quantity = 2,
+    @payment_mode = 'online',
+    @order_mode = 'online',
+    @dateoforder = '2024-03-31'; 
+
+
+
+
+	EXEC PlaceOrder 
+    @cid = 101,
+    @pid = 201,
+    @size_id = 1,
+    @quantity = 2,
+    @payment_mode = 'online',
+    @order_mode = 'online';
+
+
+	truncate table MonthlyOrders
+
+	select * from ordertble
+	select * from MonthlyOrders
+	select * from customertbl
+
+	
+
+------------------------------------------------
+
+
+
+
+OWN 
+
+
+
+create or alter proc dynamic_insert
+@dbname nvarchar(50),
+@tablename nvarchar (50),
+@columnname nvarchar (50 ),
+@values nvarchar(50)
+
+as
+begin 
+	SET NOCOUNT ON;
+	declare @dynamicsql nvarchar(max);
+
+	set @dynamicsql = 'insert into '+ @dbname + '.' + 'dbo.' + @tablename +' ( '+ @columnname + ' ) '+ ' values ' + (' ( ') +  @values + (' ) ') ;
+
+	print @dynamicsql
+
+	exec sp_executesql @dynamicsql
+
+end
+
+
+select * from db1.dbo.Employee
+
+dynamic_insert db1,Employee,'employeeid,employeename,departmentid','22,''tushar'',''1'''
+
+
+
+
+----------------------------------------------------
+
+create or alter proc dynamic_update
+@dbname nvarchar(50),
+@tablename nvarchar (50),
+@columnname nvarchar (50 ),
+@newvalue nvarchar(50),
+@filtercolumnname nvarchar (50 ),
+@oldvalue  nvarchar (50 )
+
+as
+begin 
+	SET NOCOUNT ON;
+	declare @dynamicsql nvarchar(max);
+
+	set @dynamicsql = 'update '+ @dbname + '.' + 'dbo.' + @tablename +' set '+ @columnname + ' = ' + @newvalue  + ' where '  +  @filtercolumnname + ' = ' + @oldvalue ;
+
+	print @dynamicsql
+
+	exec sp_executesql @dynamicsql
+
+end
+
+
+
+
+
+dynamic_update db1,Employee,departmentid,'''5''',employeeid,21
+
+
+
+----------------------------------------------------
+
+
+-- Create a stored procedure for dynamic delete and create the history or backup table for the deleted employee
+
+create or alter proc dynamic_delete
+@dbname nvarchar(50),
+@tablename nvarchar (50),
+@columnname nvarchar (50 ),
+@value nvarchar(50)
+
+
+as
+begin 
+	SET NOCOUNT ON;
+	declare @dynamicsql nvarchar(max);
+
+	set @dynamicsql = 'delete from '+ @dbname + '.' + 'dbo.' + @tablename +' where '+ @columnname + ' = ' + @value ;
+
+	print @dynamicsql
+
+	exec sp_executesql @dynamicsql
+
+end
+
+
+
+
+dynamic_delete db1,employee,employeeid,21
+
+
+create or alter trigger backup_history_emp
+on db1.dbo.employee
+for delete
+as
+begin 
+declare @emp_id int,
+@emp_name varchar(100),
+@department_id int;
+
+
+
+-- select those column which are required us
+select @emp_id= employeeid ,@emp_name = Employeename,@department_id = departmentid  from deleted;
+
+
+-- create backup table and insert into it
+
+insert into test_bhushan.dbo.employee_backup values (@emp_id,@emp_name,@department_id)
+
+end
+
+
+
+
+
+-----------------------------
+
+
+
+
+--  create dynamic sp to find the specific record in the employee name 
+
+create or alter proc dynamic_string_finder
+@dbname nvarchar(100),
+@tablename nvarchar(100),
+@columnname nvarchar(100),
+@string nvarchar(100),
+@condition  nvarchar(100) = null,
+@filtercolumn nvarchar(100)
+as
+begin
+
+declare @dynamicsql nvarchar(max);
+
+
+-- set query 
+if @condition is null OR @condition = 'first'
+begin
+set @dynamicsql = 'select ' + @columnname + ' from '+ @dbname + '.dbo.'+ @tablename + ' where ' + @filtercolumn + ' like ' +''''+ @string  +'%'+'''';
+end
+
+ELSE IF @condition is not null and  @condition = 'last'
+begin
+set @dynamicsql = 'select ' + @columnname + ' from '+ @dbname + '.dbo.'+ @tablename + ' where ' + @filtercolumn + ' like ' +''''+'%'+ @string +'''';
+end
+
+print @dynamicsql
+
+exec sp_executesql @dynamicsql
+
+end
+
+
+
+
+
+
+
+dynamic_string_finder  db1,employee,'*', 'e',last,employeename 
+
+
+
+
+
+
+-----------------------------------------
+
+
+
+create  or alter trigger emp_backups
+on db1.dbo.Employee
+for insert,delete
+as
+begin
+
+declare @emp_id_i int;
+declare @emp_name_i nvarchar(100);
+declare @emp_id_d int;
+declare @emp_name_d nvarchar(100);
+
+select @emp_id_i = EmployeeID,@emp_name_i = EmployeeName  from inserted;
+select @emp_id_d = EmployeeID,@emp_name_d = EmployeeName  from deleted;
+
+
+if exists(select * from inserted )
+begin 
+
+insert into #employees_backup (emp_id,emp_name,condition,date_added) values ( @emp_id_i,@emp_name_i,'join',getdate()) ;
+
+end
+
+if exists(select * from deleted )
+begin 
+insert into #employees_backup (emp_id,emp_name,condition,date_added) values ( @emp_id_d,@emp_name_d,'left',getdate()) ;
+end
+
+end
+
+----------------------------------------
+
+
+
+
+
+
+
+CREATE PROCEDURE GetPatientDetails
+    @PatientID INT,
+    @StartDate DATE = NULL,
+    @EndDate DATE = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Check if the patient exists
+    IF NOT EXISTS (SELECT 1 FROM Patients WHERE PatientID = @PatientID)
+    BEGIN
+        PRINT 'Patient does not exist.';
+        RETURN;
+    END
+
+    -- Retrieve patient information
+    SELECT
+        p.PatientID,
+        p.PatientName,
+        p.DateOfBirth,
+        p.Gender,
+        p.ContactNumber,
+        a.AppointmentID,
+        a.AppointmentDate,
+        d.DoctorName AS DoctorName_Appointment,
+        a.AppointmentType
+    FROM
+        Patients p
+    LEFT JOIN
+        Appointments a ON p.PatientID = a.PatientID
+    LEFT JOIN
+        Doctors d ON a.DoctorID = d.DoctorID
+    WHERE
+        p.PatientID = @PatientID
+        AND (@StartDate IS NULL OR a.AppointmentDate >= @StartDate)
+        AND (@EndDate IS NULL OR a.AppointmentDate <= @EndDate);
+
+    -- Retrieve medical procedures information
+    SELECT
+        p.PatientID,
+        p.ProcedureID,
+        p.ProcedureDate,
+        p.ProcedureName,
+        d.DoctorName AS DoctorName_Procedure,
+        p.ProcedureCost
+    FROM
+        Procedures p
+    LEFT JOIN
+        Doctors d ON p.DoctorID = d.DoctorID
+    WHERE
+        p.PatientID = @PatientID
+        AND (@StartDate IS NULL OR p.ProcedureDate >= @StartDate)
+        AND (@EndDate IS NULL OR p.ProcedureDate <= @EndDate);
+
+END
+
+
+
+
+-- Example execution:
+EXEC GetPatientDetails @PatientID = 1, @StartDate = '2024-01-01', @EndDate = '2024-12-31';
+
+
+
+
+
+
+CREATE TABLE Patients (
+    PatientID INT PRIMARY KEY,
+    PatientName VARCHAR(100) NOT NULL,
+    DateOfBirth DATE NOT NULL,
+    Gender CHAR(1) NOT NULL, -- 'M' for Male, 'F' for Female, 'O' for Other
+    ContactNumber VARCHAR(20) NOT NULL,
+    -- Additional patient information columns can be added as needed
+);
+
+
+
+CREATE TABLE Doctors (
+    DoctorID INT PRIMARY KEY,
+    DoctorName VARCHAR(100) NOT NULL,
+    Specialty VARCHAR(100) NOT NULL
+    -- Additional doctor information columns can be added as needed
+);
+CREATE TABLE Appointments (
+    AppointmentID INT PRIMARY KEY,
+    PatientID INT,
+    DoctorID INT,
+    AppointmentDate DATETIME,
+    AppointmentType VARCHAR(50),
+    FOREIGN KEY (PatientID) REFERENCES Patients(PatientID),
+    FOREIGN KEY (DoctorID) REFERENCES Doctors(DoctorID)
+    -- Additional appointment information columns can be added as needed
+);
+CREATE TABLE Procedures (
+    ProcedureID INT PRIMARY KEY,
+    PatientID INT,
+    ProcedureDate DATE,
+    ProcedureName VARCHAR(100),
+    DoctorID INT,
+    ProcedureCost DECIMAL(10, 2),
+    FOREIGN KEY (PatientID) REFERENCES Patients(PatientID),
+    FOREIGN KEY (DoctorID) REFERENCES Doctors(DoctorID)
+    -- Additional procedure information columns can be added as needed
+);
+INSERT INTO Patients (PatientID, PatientName, DateOfBirth, Gender, ContactNumber)
+VALUES
+    (1, 'John Doe', '1980-05-15', 'M', '123-456-7890'),
+    (2, 'Jane Smith', '1990-08-20', 'F', '987-654-3210');
+INSERT INTO Doctors (DoctorID, DoctorName, Specialty)
+VALUES
+    (101, 'Dr. Smith', 'Cardiology'),
+    (102, 'Dr. Johnson', 'Pediatrics');
+INSERT INTO Appointments (AppointmentID, PatientID, DoctorID, AppointmentDate, AppointmentType)
+VALUES
+    (1, 1, 101, '2024-07-15 10:00:00', 'Check-up'),
+    (2, 2, 102, '2024-07-16 11:30:00', 'Consultation');
+INSERT INTO Procedures (ProcedureID, PatientID, ProcedureDate, ProcedureName, DoctorID, ProcedureCost)
+VALUES
+    (1, 1, '2024-07-10', 'MRI Scan', 101, 1200.00),
+    (2, 2, '2024-07-12', 'Blood Test', 102, 300.00);
+
+
+
+	select * from Patients
+	select * from Doctors
+	select * from Appointmentscreate or alter procedure GetEmployeeSalaries
+@DepartmentName varchar(30),
+@SalaryThreshold decimal(10,2)
+as
+begin
+set nocount on;
+
+declare @departmentid int ;
+
+select @departmentid=departmentid  from Departments where DepartmentName = @DepartmentName
+
+
+
+select EmployeeID,concat(firstname,' ',lastname) as full_name,departmentid,position,salary from Employees
+where departmentid = @departmentid and salary >  @SalaryThreshold
+
+
+end
+
+
+
+GetEmployeeSalaries 'Engineering',80000
+
+
+	select * from Procedures
+
+
+
+
+
+
+
+------------------------------------------
+
+ stored procedure returns the top n rows from a table by the values of a specified column:
+ 
+ 
+ 
+ 
+CREATE or alter PROCEDURE top_n_employee
+    @table_name NVARCHAR(100),
+    @top_n NVARCHAR(100),
+    @columns NVARCHAR(100)
+AS
+BEGIN
+    DECLARE @dynamic_sql NVARCHAR(MAX);
+
+    -- Construct the dynamic SQL query
+    SET @dynamic_sql = 'SELECT TOP ' + @top_n + ' ' + @columns + ' FROM ' + @table_name;
+
+    -- Print the dynamic SQL query for debugging (optional)
+    PRINT @dynamic_sql;
+
+    -- Execute the dynamic SQL query
+    EXEC sp_executesql @dynamic_sql;
+END
+
+
+
+top_n_employee employee,5,'*'
+
+
+
+------------------------------------------
+
+
+
+
+
+create proc fund_transfers
+@FromAccount int,
+@ToAccount  int,
+@Amount decimal(10,2)
+as
+begin
+set nocount on;
+
+  DECLARE @ResultMessage NVARCHAR(100);
+
+    -- Begin transaction for atomicity
+    BEGIN TRANSACTION;
+
+    -- Check if FromAccount and ToAccount exist
+    IF NOT EXISTS (SELECT 1 FROM Accounts WHERE AccountID = @FromAccount)
+    BEGIN
+        SET @ResultMessage = 'FromAccount does not exist.';
+        ROLLBACK TRANSACTION;
+        RETURN;
+    END
+
+    IF NOT EXISTS (SELECT 1 FROM Accounts WHERE AccountID = @ToAccount)
+    BEGIN
+        SET @ResultMessage = 'ToAccount does not exist.';
+        ROLLBACK TRANSACTION;
+        RETURN;
+    END
+
+
+	 DECLARE @FromAccountBalance DECIMAL(18, 2);
+    SELECT @FromAccountBalance = Balance FROM Accounts WHERE AccountID = @FromAccount;
+
+	if @FromAccountBalance < @Amount
+	begin 
+	SET @ResultMessage = ' Insufficient  balance in account';
+	rollback transaction;
+	return
+	end
+
+	update Accounts set balance = balance - @Amount where accountid = @FromAccount;
+	update Accounts set balance = balance + @Amount where accountid = @ToAccount;
+
+	insert into Transactions (transactionid,fromaccountid,toaccountid,amount,transferdate) values (identity(1,1),@FromAccount,@ToAccount,@Amount,getdate());
+
+	commit transaction;
+
+	set @ResultMessage = 'transaction complete';
+	select @ResultMessage as result;
+end
+
+
+
+
+fund_transfers 3,1,100
+
+----------
+
+
+create or alter procedure GetEmployeeSalaries
+@DepartmentName varchar(30),
+@SalaryThreshold decimal(10,2)
+as
+begin
+set nocount on;
+
+declare @departmentid int ;
+
+select @departmentid=departmentid  from Departments where DepartmentName = @DepartmentName
+
+
+
+select EmployeeID,concat(firstname,' ',lastname) as full_name,departmentid,position,salary from Employees
+where departmentid = @departmentid and salary >  @SalaryThreshold
+
+
+end
+
+
+
+GetEmployeeSalaries 'Engineering',80000
+
+
+
+------------------------------------------
+
+
+-- Drop procedure if it already exists
+IF EXISTS (SELECT * FROM sys.objects WHERE type = 'P' AND name = 'GetEmployeePerformance')
+    DROP PROCEDURE GetEmployeePerformance;
+GO
+
+-- Create procedure
+CREATE PROCEDURE GetEmployeePerformance
+    @Year INT,
+    @MinSalesAmount DECIMAL(10, 2)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Temporary table to hold calculated performance ratings
+    CREATE TABLE #EmployeePerformance (
+        EmployeeID INT,
+        FullName VARCHAR(100),
+        TotalSalesAmount DECIMAL(10, 2),
+        PerformanceRating VARCHAR(50)
+    );
+
+    -- Calculate performance ratings
+    INSERT INTO #EmployeePerformance (EmployeeID, FullName, TotalSalesAmount, PerformanceRating)
+    SELECT e.EmployeeID,
+           CONCAT(e.FirstName, ' ', e.LastName) AS FullName,
+           ISNULL(SUM(s.Amount), 0) AS TotalSalesAmount,
+           CASE
+               WHEN ISNULL(SUM(s.Amount), 0) < @MinSalesAmount THEN 'Below Expectations'
+               WHEN ISNULL(SUM(s.Amount), 0) >= @MinSalesAmount AND ISNULL(SUM(s.Amount), 0) < (2 * @MinSalesAmount) THEN 'Meets Expectations'
+               WHEN ISNULL(SUM(s.Amount), 0) >= (2 * @MinSalesAmount) THEN 'Exceeds Expectations'
+           END AS PerformanceRating
+    FROM Employees e
+    LEFT JOIN Sales s ON e.EmployeeID = s.EmployeeID
+                      AND YEAR(s.SaleDate) = @Year
+    GROUP BY e.EmployeeID, e.FirstName, e.LastName;
+
+    -- Retrieve results
+    SELECT * FROM #EmployeePerformance ORDER BY EmployeeID;
+
+    -- Drop temporary table
+    DROP TABLE #EmployeePerformance;
+END;
+GO
+
+
+GetEmployeePerformance 2023,25000
+
+
+
+
+
+-----------------
+
+
+
+CalculateFormulas
+
+-- Create the stored procedure
+CREATE or alter PROCEDURE CalculateFormulas
+AS
+BEGIN
+    DECLARE @a float, @b float, @c float, @d float;
+    DECLARE @item1 float, @item2 float, @item3 float, @item4 float, @item5 float, @item6 float;
+    DECLARE @sql nvarchar(max);
+    DECLARE @result float;
+    DECLARE @datas varchar(200), @formula nvarchar(max);
+    DECLARE @final_sql nvarchar(max);
+
+    -- Fetch the values from raw_data table
+    SELECT @a = variables_values FROM raw_data WHERE variables = 'a';
+    SELECT @b = variables_values FROM raw_data WHERE variables = 'b';
+    SELECT @c = variables_values FROM raw_data WHERE variables = 'c';
+    SELECT @d = variables_values FROM raw_data WHERE variables = 'd';
+
+    -- Create a temporary table for formulas
+    CREATE TABLE #tempFormulas (
+        datas varchar(200),
+        formula nvarchar(max),
+        type varchar(50)
+    );
+
+    -- Insert the formulas into the temporary table with variables replaced by their values
+    INSERT INTO #tempFormulas (datas, formula, type)
+    SELECT datas, 
+           REPLACE(REPLACE(REPLACE(REPLACE(formulas, 'a', CAST(@a AS nvarchar)), 'b', CAST(@b AS nvarchar)), 'c', CAST(@c AS nvarchar)), 'd', CAST(@d AS nvarchar)), 
+           type
+    FROM libraries;
+
+    -- Calculate the straight type values for each item
+    DECLARE formula_cursor CURSOR FOR
+    SELECT datas, formula FROM #tempFormulas WHERE type = 'straight';
+
+    OPEN formula_cursor;
+
+    FETCH NEXT FROM formula_cursor INTO @datas, @formula;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        SET @sql = 'SELECT @resultOut = ' + @formula;
+        EXEC sp_executesql @sql, N'@resultOut float OUTPUT', @resultOut = @result OUTPUT;
+
+        IF @datas = 'item1' SET @item1 = @result;
+        IF @datas = 'item2' SET @item2 = @result;
+        IF @datas = 'item3' SET @item3 = @result;
+        IF @datas = 'item4' SET @item4 = @result;
+
+        FETCH NEXT FROM formula_cursor INTO @datas, @formula;
+    END;
+
+    CLOSE formula_cursor;
+    DEALLOCATE formula_cursor;
+
+    -- Calculate the local type values for each item
+    DECLARE local_cursor CURSOR FOR
+    SELECT datas, formula FROM #tempFormulas WHERE type = 'local';
+
+    OPEN local_cursor;
+
+    FETCH NEXT FROM local_cursor INTO @datas, @formula;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        -- Replace item references in local formulas with their calculated values
+        SET @final_sql = REPLACE(REPLACE(REPLACE(REPLACE(@formula, 'item1', CAST(@item1 AS nvarchar)), 'item2', CAST(@item2 AS nvarchar)), 'item3', CAST(@item3 AS nvarchar)), 'item4', CAST(@item4 AS nvarchar));
+
+        -- Execute the final SQL and capture the result
+        SET @sql = 'SELECT @resultOut = ' + @final_sql;
+        EXEC sp_executesql @sql, N'@resultOut float OUTPUT', @resultOut = @result OUTPUT;
+
+        IF @datas = 'item5' SET @item5 = @result;
+        IF @datas = 'item6' SET @item6 = @result;
+
+        FETCH NEXT FROM local_cursor INTO @datas, @formula;
+    END;
+
+    CLOSE local_cursor;
+    DEALLOCATE local_cursor;
+
+    -- Insert the calculated values into the output table
+    INSERT INTO output_table (item1, item2, item3, item4, item5, item6)
+    VALUES (@item1, @item2, @item3, @item4, @item5, @item6);
+
+    -- Drop the temporary table
+    DROP TABLE #tempFormulas;
+END;
+
+
+----------------------------
+
+
+
+
+CREATE or alter PROCEDURE CalculateFormulas
+AS
+BEGIN
+    DECLARE @a float, @b float, @c float, @d float;
+    DECLARE @item1 float, @item2 float, @item3 float, @item4 float, @item5 float, @item6 float;
+    DECLARE @sql nvarchar(max);
+    DECLARE @result float;
+    DECLARE @datas varchar(200), @formula nvarchar(max);
+    DECLARE @final_sql nvarchar(max);
+
+    -- Create a temporary table for formulas
+    CREATE TABLE #tempFormulas (
+        datas varchar(200),
+        formula nvarchar(max),
+        type varchar(50)
+    );
+
+    -- Fetch the values from raw_data table and insert into variables
+    INSERT INTO #tempFormulas (datas, formula, type)
+    SELECT datas, 
+           REPLACE(REPLACE(REPLACE(REPLACE(formulas, 'a', CAST((SELECT variables_values FROM raw_data WHERE variables = 'a') AS nvarchar)), 'b', CAST((SELECT variables_values FROM raw_data WHERE variables = 'b') AS nvarchar)), 'c', CAST((SELECT variables_values FROM raw_data WHERE variables = 'c') AS nvarchar)), 'd', CAST((SELECT variables_values FROM raw_data WHERE variables = 'd') AS nvarchar)), 
+           type
+    FROM libraries;
+
+    -- Calculate the straight type values for each item
+    DECLARE formula_cursor CURSOR FOR
+    SELECT datas, formula FROM #tempFormulas WHERE type = 'straight';
+
+    OPEN formula_cursor;
+
+    FETCH NEXT FROM formula_cursor INTO @datas, @formula;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        SET @sql = 'SELECT @resultOut = ' + @formula;
+        EXEC sp_executesql @sql, N'@resultOut float OUTPUT', @resultOut = @result OUTPUT;
+
+        IF @datas = 'item1' SET @item1 = @result;
+        IF @datas = 'item2' SET @item2 = @result;
+        IF @datas = 'item3' SET @item3 = @result;
+        IF @datas = 'item4' SET @item4 = @result;
+		IF @datas = 'item5' SET @item5 = @result;
+		IF @datas = 'item6' SET @item6 = @result;
+
+        FETCH NEXT FROM formula_cursor INTO @datas, @formula;
+    END;
+
+    CLOSE formula_cursor;
+    DEALLOCATE formula_cursor;
+
+    -- Calculate the local type values for each item
+    DECLARE local_cursor CURSOR FOR
+    SELECT datas, formula FROM #tempFormulas WHERE type = 'local';
+
+    OPEN local_cursor;
+
+    FETCH NEXT FROM local_cursor INTO @datas, @formula;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        -- Replace item references in local formulas with their calculated values
+        SET @final_sql = REPLACE(REPLACE(REPLACE(REPLACE(@formula, 'item1', CAST(@item1 AS nvarchar)), 'item2', CAST(@item2 AS nvarchar)), 'item3', CAST(@item3 AS nvarchar)), 'item4', CAST(@item4 AS nvarchar));
+
+        -- Print the final SQL for debugging
+        PRINT 'Executing: ' + @final_sql;
+
+        -- Execute the final SQL and capture the result
+        SET @sql = 'SELECT @resultOut = ' + @final_sql;
+        EXEC sp_executesql @sql, N'@resultOut float OUTPUT', @resultOut = @result OUTPUT;
+
+		IF @datas = 'item1' SET @item1 = @result;
+        IF @datas = 'item2' SET @item2 = @result;
+        IF @datas = 'item3' SET @item3 = @result;
+        IF @datas = 'item4' SET @item4 = @result;
+        IF @datas = 'item5' SET @item5 = @result;
+        IF @datas = 'item6' SET @item6 = @result;
+
+        FETCH NEXT FROM local_cursor INTO @datas, @formula;
+    END;
+
+    CLOSE local_cursor;
+    DEALLOCATE local_cursor;
+
+    -- Insert the calculated values into the output table
+    INSERT INTO output_table (item1, item2, item3, item4, item5, item6)
+    VALUES (@item1, @item2, @item3, @item4, @item5, @item6);
+
+    -- Drop the temporary table
+    DROP TABLE #tempFormulas;
+END;
+
+
+
+------------------------------
+
+CREATE OR ALTER PROCEDURE CalculateAndPivotResults
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Truncate the output_table to clear previous data
+    TRUNCATE TABLE output_table;
+
+    DECLARE @sql NVARCHAR(MAX) = '';
+    DECLARE @formula NVARCHAR(100);
+    DECLARE @datas NVARCHAR(100);
+    DECLARE @type NVARCHAR(50);
+
+    -- variables for pivoting
+    DECLARE @cols NVARCHAR(MAX) = '';
+    DECLARE @query NVARCHAR(MAX) = '';
+
+    -- type = straight
+    DECLARE formula_cursor CURSOR FOR
+    SELECT datas, formulas, type
+    FROM libraries
+    WHERE type = 'straight';
+
+    OPEN formula_cursor;
+
+    FETCH NEXT FROM formula_cursor INTO @datas, @formula, @type;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        DECLARE @replacedFormula NVARCHAR(MAX);
+        SET @replacedFormula = @formula;
+
+        DECLARE @variable NVARCHAR(50);
+        DECLARE variable_cursor CURSOR FOR
+        SELECT variables
+        FROM raw_data;
+
+        OPEN variable_cursor;
+
+        FETCH NEXT FROM variable_cursor INTO @variable;
+
+        WHILE @@FETCH_STATUS = 0
+        BEGIN
+            DECLARE @value FLOAT;
+            SELECT @value = variables_values
+            FROM raw_data
+            WHERE variables = @variable;
+
+            SET @replacedFormula = REPLACE(@replacedFormula, @variable, CAST(@value AS NVARCHAR));
+
+            FETCH NEXT FROM variable_cursor INTO @variable;
+        END
+
+        CLOSE variable_cursor;
+        DEALLOCATE variable_cursor;
+
+        -- final sql statement
+        SET @sql = 'INSERT INTO output_table (datas, result) ' +
+                   'SELECT ' + QUOTENAME(@datas, '''') + ', ' +
+                   'CAST(' + @replacedFormula + ' AS FLOAT);';
+
+        PRINT @sql;
+
+        EXEC sp_executesql @sql;
+
+        -- next records
+        FETCH NEXT FROM formula_cursor INTO @datas, @formula, @type;
+    END
+
+    CLOSE formula_cursor;
+    DEALLOCATE formula_cursor;
+
+    -- for local
+    DECLARE local_cursor CURSOR FOR
+    SELECT datas, formulas, type
+    FROM libraries
+    WHERE type = 'local';
+
+    OPEN local_cursor;
+
+    FETCH NEXT FROM local_cursor INTO @datas, @formula, @type;
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        DECLARE @localFormula NVARCHAR(MAX);
+        SET @localFormula = @formula;
+
+        DECLARE @data NVARCHAR(100);
+        DECLARE data_cursor CURSOR FOR
+        SELECT datas
+        FROM libraries
+        WHERE type = 'straight' AND CHARINDEX(datas, @localFormula) > 0;
+
+        OPEN data_cursor;
+
+        FETCH NEXT FROM data_cursor INTO @data;
+
+        WHILE @@FETCH_STATUS = 0
+        BEGIN
+            DECLARE @localResult FLOAT;
+            SELECT @localResult = result
+            FROM output_table
+            WHERE datas = @data;
+
+            SET @localFormula = REPLACE(@localFormula, @data, CAST(@localResult AS NVARCHAR));
+
+            FETCH NEXT FROM data_cursor INTO @data;
+        END
+
+        CLOSE data_cursor;
+        DEALLOCATE data_cursor;
+
+        -- final code for local
+        SET @sql = 'INSERT INTO output_table (datas, result) ' +
+                   'SELECT ' + QUOTENAME(@datas, '''') + ', ' +
+                   'CAST(' + @localFormula + ' AS FLOAT);';
+
+        PRINT @sql;
+
+        EXEC sp_executesql @sql;
+
+        FETCH NEXT FROM local_cursor INTO @datas, @formula, @type;
+    END
+
+    CLOSE local_cursor;
+    DEALLOCATE local_cursor;
+
+    IF OBJECT_ID('output_pivot') IS NOT NULL
+        DROP TABLE output_pivot;
+
+    SET @sql = '
+    SELECT datas, result
+    INTO output_pivot
+    FROM output_table;';
+
+    PRINT @sql;
+
+    EXEC sp_executesql @sql;
+
+    SET @cols = STUFF((
+        SELECT DISTINCT ', ' + QUOTENAME(datas)
+        FROM output_table
+        FOR XML PATH(''), TYPE
+    ).value('.', 'NVARCHAR(MAX)'), 1, 2, '');
+
+    -- Printing columns
+    PRINT @cols;
+
+    -- pivoting
+    SET @query = '
+    SELECT *
+    FROM (
+        SELECT datas, result
+        FROM output_table
+    ) AS SourceTable
+    PIVOT (
+        MAX(result)
+        FOR datas IN (' + @cols + ')
+    ) AS PivotTable;';
+
+    -- Print pivoting
+    PRINT @query;
+
+    -- Execute the dynamic pivot
+    EXEC sp_executesql @query;
+END;

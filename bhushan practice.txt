@@ -1,0 +1,39 @@
+-- Declare a table variable to hold the data
+DECLARE @libraries TABLE (
+    formulas  NVARCHAR(255)
+);
+
+
+
+-- Insert data into the table variable
+INSERT INTO @libraries (formulas)
+SELECT formulas
+FROM libraries;
+
+
+DECLARE @Currentformulas NVARCHAR(255);
+
+
+DECLARE @RowCount INT = (SELECT COUNT(*) FROM @libraries);
+DECLARE @Counter INT = 1;
+
+-- Loop through the table variable
+WHILE @Counter <= @RowCount
+BEGIN
+    -- Get the current row's data
+    SELECT @Currentformulas = formulas
+    FROM (
+        SELECT formulas,
+               ROW_NUMBER() OVER (ORDER BY formulas) AS RowNum
+        FROM @libraries
+    ) AS Subquery
+    WHERE RowNum = @Counter;
+
+
+
+    -- Increment the counter
+    SET @Counter = @Counter + 1;
+	
+END
+select * from @libraries;
+

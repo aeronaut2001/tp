@@ -367,3 +367,229 @@ BEGIN
     SET NOCOUNT OFF;
 END;
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+----------------
+
+
+
+
+
+
+
+CREATE OR ALTER PROCEDURE sp_SolveFormulas 
+@formulas varchar(max) = 'formulas'
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @cols NVARCHAR(MAX),
+            @query NVARCHAR(MAX),
+            @straightQuery NVARCHAR(MAX),
+            @localQuery NVARCHAR(MAX),
+            @finalQuery NVARCHAR(MAX);
+
+    -- Drop global temporary tables if they already exist
+    IF OBJECT_ID('tempdb..##raw_pivot') IS NOT NULL DROP TABLE ##raw_pivot;
+    IF OBJECT_ID('tempdb..##straight_pivot') IS NOT NULL DROP TABLE ##straight_pivot;
+
+    -- Drop local temporary tables if they already exist
+    IF OBJECT_ID('tempdb..#straight_results') IS NOT NULL DROP TABLE #straight_results;
+    IF OBJECT_ID('tempdb..#combined_results') IS NOT NULL DROP TABLE #combined_results;
+
+    -- Drop output_table if it exists
+    IF OBJECT_ID('dbo.output_table') IS NOT NULL DROP TABLE dbo.output_table;
+
+    -- Step 1: Pivot the raw_data table
+    SELECT @cols = STUFF((SELECT DISTINCT ',' + QUOTENAME(variables) 
+                          FROM raw_data 
+                          FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 1, '');
+
+    SET @query = 'SELECT ' + @cols + ' INTO ##raw_pivot FROM 
+                 (SELECT variables, CAST(variables_values AS FLOAT) AS variables_values FROM raw_data) AS SourceTable
+                 PIVOT 
+                 (MAX(variables_values) FOR variables IN (' + @cols + ')) AS PivotTable;';
+
+    EXEC sp_executesql @query;
+
+
+
+-- Create a temporary table to store the selected data
+    CREATE TABLE #temp_libraries
+    (
+        id INT,
+        template NVARCHAR(255),  
+        datas NVARCHAR(255),
+        formulas NVARCHAR(MAX),
+        type NVARCHAR(255)
+    );
+
+ -- Declare and set up the dynamic SQL query
+    DECLARE @SQL_temp_libraries NVARCHAR(MAX);
+
+    SET @SQL_temp_libraries = '
+        INSERT INTO #temp_libraries (id, template, datas, formulas, type)
+        SELECT id, template, datas, ' + QUOTENAME(@formulas) + ', type
+        FROM libraries;
+    ';
+
+    -- Execute the dynamic SQL query
+    EXEC sp_executesql @SQL_temp_libraries;
+
+    -- You can now select from the temporary table to verify results
+    SELECT * FROM #temp_libraries;
+
+
+
+
+
+
+
+    -- Step 2: Create the #straight_results table
+    CREATE TABLE #straight_results (datas NVARCHAR(MAX), result FLOAT, template NVARCHAR(MAX));
+
+    -- Step 3: Separate records where type = 'straight' and evaluate the formulas
+    SET @straightQuery = '';
+
+    SELECT @straightQuery = @straightQuery + 'INSERT INTO #straight_results (datas, result, template) 
+                                               SELECT ''' + datas + ''', ' + formulas + ', ''' + template + '''
+                                               FROM ##raw_pivot;' 
+    FROM #temp_libraries 
+    WHERE type = 'straight';
+
+
+
+
+    EXEC sp_executesql @straightQuery;
+
+    -- Step 4: Pivot the #straight_results table
+    SELECT @cols = STUFF((SELECT DISTINCT ',' + QUOTENAME(datas) 
+                          FROM #straight_results 
+                          FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 1, '');
+
+    SET @query = 'SELECT ' + @cols + ', template INTO ##straight_pivot FROM 
+                 (SELECT datas, result, template FROM #straight_results) AS SourceTable
+                 PIVOT 
+                 (MAX(result) FOR datas IN (' + @cols + ')) AS PivotTable;';
+
+    EXEC sp_executesql @query;
+
+    -- Step 5: Create the #combined_results table
+    CREATE TABLE #combined_results (datas NVARCHAR(MAX), result FLOAT, template NVARCHAR(MAX));
+
+    -- Combine results from straight and local types
+    SET @localQuery = '';
+
+    -- Insert straight results
+    SET @localQuery = @localQuery + 'INSERT INTO #combined_results (datas, result, template) 
+                                      SELECT datas, result, template FROM #straight_results;';
+
+    -- Insert local results
+    SELECT @localQuery = @localQuery + 'INSERT INTO #combined_results (datas, result, template) 
+                                         SELECT ''' + datas + ''', ' + REPLACE(REPLACE(formulas, 'item1', '[item1]'), 'electronic', '[electronic]') + ', ''' + template + '''
+                                         FROM ##straight_pivot;' 
+    FROM #temp_libraries 
+    WHERE type = 'local';
+
+    EXEC sp_executesql @localQuery;
+
+    -- Step 6: Pivot the #combined_results table and insert into output_table
+    SELECT @cols = STUFF((SELECT DISTINCT ',' + QUOTENAME(datas) 
+                          FROM #combined_results 
+                          FOR XML PATH(''), TYPE).value('.', 'NVARCHAR(MAX)'), 1, 1, '');
+
+    SET @finalQuery = 'SELECT ' + @cols + ', template INTO dbo.output_table FROM 
+                        (SELECT datas, result, template FROM #combined_results) AS SourceTable
+                        PIVOT 
+                        (MAX(result) FOR datas IN (' + @cols + ')) AS PivotTable;';
+
+    EXEC sp_executesql @finalQuery;
+
+    -- Cleanup intermediate tables
+    DROP TABLE ##raw_pivot;
+    DROP TABLE ##straight_pivot;
+    DROP TABLE #straight_results;
+    DROP TABLE #combined_results;
+
+    SELECT * FROM dbo.output_table;
+
+    SET NOCOUNT OFF;
+END;
+
+
+
+
+
+
+
+--------------------------------
+
+
+
+
+CREATE TABLE [dbo].[libraries](
+	[ID] [int] IDENTITY(1,1) NOT NULL,
+	[Template] [varchar](10) NULL,
+	[datas] [varchar](200) NULL,
+	[formulas] [varchar](500) NULL,
+	[type] [varchar](50) NULL,
+	[formulas2] [varchar](100) NULL,
+	[formulas3] [nvarchar](60) NULL
+)
+
+
+
+1	Template1	harsh	a/10	straight	a/10	a*20
+2	Template1	tushar	m*2	straight	m*2	a-30
+3	Template1	man	harsh+tushar	local	harsh+tushar	harsh+tushar
+4	Template1	item4	a*3	straight	a*3	f+1000
+5	Template1	vivek	a*3	straight	a*3	m-600/a
+6	Template1	item6	harsh+tushar	local	item4+vivek	item4+vivek
+7	Template2	harsh	a/10	straight	square(a)	10*10*a
+8	Template2	harsh	(a+b+c)*10 / 100	straight	square(a)	10*10*a
+9	Template2	tushar	Round(a+b,2)	straight	square(a)	10*10*a
+10	Template2	man	square(a)	straight	square(a)	10*10*a
+11	Template2	item4	5*m	straight	square(a)	10*10*a
+12	Template2	vivek	m-600/a	straight	square(a)	10*10*b
+13	Template3	harsh	a/10	straight	square(a)	10*10*b
+14	Template3	man	a*5/10	straight	f+1000	10*10*b
+15	Template3	harsh	a/10	straight	f+1000	10*10*b
+16	Template3	harsh	round(a,3)	straight	f+1000	10*10*b
+21	Template2	item6	f+1000	straight	a*10	10*10*b
+22	Template5	item6	a*10	straight	a*10	10*10*b
+20	Template5	item4	a*2	straight	a*10	10*10*b
+
+
+
+
+CREATE TABLE [dbo].[raw_data](
+	[variables] [varchar](50) NULL,
+	[variables_values] [int] NULL
+) 
+
+
+
+
+
+a	1000
+b	5000
+c	4000
+m	3000
+f	400
